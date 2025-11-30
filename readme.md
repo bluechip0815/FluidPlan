@@ -1,9 +1,3 @@
-Of course. A good README is essential for any project. It serves as the front door, explaining what the project is, how to use it, and how it's structured.
-
-Based on the simulator we've built, here is a comprehensive `README.md` file. You can copy and paste this directly into a `README.md` file in the root of your Git repository.
-
----
-
 # FluidSimu - A C# Pneumatic Network Simulator
 
 FluidSimu is a lightweight, console-based simulator for modeling the dynamic behavior of pneumatic systems. It allows users to define a network of components like pipes, valves, tanks, and pressure regulators in a simple JSON format and simulate the pressure and flow distribution over time.
