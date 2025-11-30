@@ -19,6 +19,18 @@ namespace FluidSimu
     {
         public static void Main(string[] args)
         {
+            // Delegate to the correct mode based on command-line arguments
+            if (args.Contains("--interactive"))
+            {
+                RunInteractiveMode(args);
+            }
+            else
+            {
+                RunProfileBasedMode(args);
+            }
+        }
+        public static void RunProfileBasedMode(string[] args)
+        {
             var modelPath = args.Length > 0 ? args[0] : "model.json";
             var profilePath = args.Length > 1 ? args[1] : "executionProfile.json";
             var outputPath = "output";
@@ -103,6 +115,93 @@ namespace FluidSimu
                 AllowTrailingCommas = true
             }) ?? throw new InvalidOperationException($"Could not deserialize {path}");
         }
+        /// <summary>
+        /// NEW: Interactive simulation mode driven by console commands.
+        /// </summary>
+        public static void RunInteractiveMode(string[] args)
+        {
+            var modelPath = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "model.json";
+            Console.WriteLine("--- FluidSimu Interactive Mode ---");
+            Console.WriteLine($"Loading model '{modelPath}'...");
+
+            var modelDto = LoadJson<SimulationModelDto>(modelPath);
+            var model = PneumaticModel.FromDto(modelDto);
+            // Set the model to interactive mode
+            model.IsInteractive = true;
+
+            // Use a fixed timestep for interactive mode
+            double dt = 0.001; // 1ms
+            model.Reset(dt);
+            FlowPhysics.Initialize(4.0); // Use a default K value
+
+            var controllables = model.Elements.OfType<IControllable>().ToDictionary(c => ((IPneumaticElement)c).Name, c => c);
+            var visibles = model.Elements.Where(e => e.IsVisible).ToList();
+
+            Console.WriteLine("\n--- Simulation Control ---");
+            Console.WriteLine("  <ElementName> <Value>   (e.g., 'V1 1' or 'EPU 3.5')");
+            Console.WriteLine("  run <steps>             (e.g., 'run 1000' to simulate 1s)");
+            Console.WriteLine("  status                  (shows current state of visible elements)");
+            Console.WriteLine("  quit                    (to exit)");
+
+            bool keepRunning = true;
+            while (keepRunning)
+            {
+                Console.Write("\n> ");
+                var input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input)) continue;
+
+                var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var command = parts[0].ToLower();
+
+                switch (command)
+                {
+                    case "quit":
+                        keepRunning = false;
+                        break;
+                    case "status":
+                        PrintStatus(model, visibles);
+                        break;
+                    case "run":
+                        if (parts.Length > 1 && int.TryParse(parts[1], out int steps) && steps > 0)
+                        {
+                            for (int i = 0; i < steps; i++) model.Execute();
+                            Console.WriteLine($"Simulated {steps * dt:F4}s. Current Time: {model.CurrentTime:F4}s");
+                            PrintStatus(model, visibles);
+                        }
+                        else
+                            Console.WriteLine("Usage: run <number_of_steps>");
+                        break;
+                    default:
+                        if (parts.Length > 1 && double.TryParse(parts[1], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double value))
+                        {
+                            if (controllables.TryGetValue(parts[0], out var controllable))
+                            {
+                                controllable.SetControlValue(value);
+                                Console.WriteLine($"Set {parts[0]} to {value}.");
+                            }
+                            else
+                                Console.WriteLine($"Error: Element '{parts[0]}' not found or not controllable.");
+                        }
+                        else
+                            Console.WriteLine("Unknown command. Use 'ElementName Value' or a valid command.");
+                        break;
+                }
+            }
+            Console.WriteLine("\nInteractive simulation finished.");
+        }
+        private static void PrintStatus(PneumaticModel model, List<IPneumaticElement> visibles)
+        {
+            Console.WriteLine($"--- Status at T = {model.CurrentTime:F4}s ---");
+            if (!visibles.Any())
+            {
+                Console.WriteLine("No elements marked as visible. Add '\"visible\": \"true\"' to element parameters in JSON.");
+                return;
+            }
+            foreach (var element in visibles)
+            {
+                Console.WriteLine($"  {element.Name,-10}: {element.Pressure:F4} bar");
+            }
+        }
     }
 }
 </program.cs>
@@ -125,11 +224,8 @@ namespace FluidSimu
         [JsonPropertyName("comment")]
         public string? Comment { get; set; }
 
-        [JsonPropertyName("From")]
-        public string? From { get; set; }
-
-        [JsonPropertyName("To")]
-        public string? To { get; set; }
+        [JsonPropertyName("visible")]
+        public bool Visible { get; set; }
 
         [JsonPropertyName("parameters")]
         public Dictionary<string, string> Parameters { get; set; } = new();
@@ -862,13 +958,18 @@ namespace FluidSimu
         public bool hasSupply { get; private set; } = false;
         public Connector(List<IPneumaticElement> l, int node)
         {
+            if (l.Count < 2)
+                throw new ArgumentOutOfRangeException($"Connetion #{node} needs more elements!");
+
             _nodes = l;
             int cnt = 0;
             int idx = -1;
             for (int i = 0; i < l.Count; i++)
             {
+                // CORRECTION: Add PneumaticType.epu to the condition
                 if (l[i].Type == PneumaticType.supply ||
-                    l[i].Type == PneumaticType.exhaust)
+                    l[i].Type == PneumaticType.exhaust ||
+                    l[i].Type == PneumaticType.epu) // <-- ADD THIS
                 {
                     cnt++;
                     idx = i;
@@ -880,7 +981,7 @@ namespace FluidSimu
             if (cnt == 1)
             {
                 hasSupply = true;
-                if (idx!=0)
+                if (idx != 0)
                 {
                     IPneumaticElement e = _nodes[idx];
                     _nodes.RemoveAt(idx);
@@ -937,13 +1038,16 @@ namespace FluidSimu
 </Connector.cs>
 
 <PneumaticModel.cs>
-using System.Xml.Linq;
-using static SkiaSharp.HarfBuzz.SKShaper;
-
 namespace FluidSimu
 {
     public class PneumaticModel
     {
+        /// <summary>
+        /// Determines the simulation mode.
+        /// If true, elements respond to direct control.
+        /// If false, elements follow their pre-loaded schedules.
+        /// </summary>
+        public bool IsInteractive { get; set; } = false;
         /// <summary>
         /// Pneumatic elements 
         /// </summary>
@@ -1002,6 +1106,61 @@ namespace FluidSimu
                 model._elements.Add(element);
                 Console.WriteLine(element.ToString());
             }
+
+            // --- START: NEW VALIDATION LOGIC ---
+            Console.WriteLine("\nValidating model integrity...");
+            var definedElementNames = new HashSet<string>(model._elements.Select(e => e.Name));
+            var usedInConnectionNames = new HashSet<string>();
+            var errors = new List<string>();
+
+            // 1. Check if elements used in connections are actually defined.
+            foreach (var connectionStr in dto.Connections)
+            {
+                var namesInConnection = connectionStr.Split(new[] { ',', '>' }, StringSplitOptions.RemoveEmptyEntries)
+                                                     .Select(name => name.Trim());
+                foreach (var name in namesInConnection)
+                {
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    usedInConnectionNames.Add(name); // Track all used elements
+                    if (!definedElementNames.Contains(name))
+                    {
+                        errors.Add($"Element '{name}' used in connection \"{connectionStr}\" is not defined in the 'elements' list.");
+                    }
+                }
+            }
+
+            // If there are any errors, report them and stop execution.
+            if (errors.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("FATAL: Model validation failed. Halting execution.");
+                foreach (var error in errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+                Console.ResetColor();
+                throw new InvalidOperationException("Model configuration is invalid. Please check the JSON file.");
+            }
+
+            // 2. Check for defined elements that are never used in any connection.
+            var unusedElementNames = definedElementNames.Except(usedInConnectionNames);
+            if (unusedElementNames.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("WARNING: The following elements are defined but not used in any connection:");
+                foreach (var unusedName in unusedElementNames)
+                {
+                    Console.WriteLine($"  - '{unusedName}'");
+                }
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.WriteLine("Model validation successful: All elements are defined and used.");
+            }
+            // --- END: NEW VALIDATION LOGIC ---
+
 
             num = 0;
             foreach (string nls in dto.Connections)
@@ -1103,7 +1262,7 @@ namespace FluidSimu
 
             return model;
         }
-        public void AddCharge(ChargeData x) 
+        public void AddCharge(ChargeData x)
         {
             chargeDatas.Add(x);
         }
@@ -1211,7 +1370,7 @@ namespace FluidSimu
             LastMaxPressureDelta = maxDelta;
 
             CurrentTime += DeltaT;
-        }        
+        }
         private void DumpConnetors()
         {
             Console.WriteLine($"\nConnection between elements");
@@ -1302,12 +1461,14 @@ namespace FluidSimu
 <BaseElement.cs>
 namespace FluidSimu
 {
+
     public interface IPneumaticElement
     {
         string Name { get; }
         int Id { get; }
         PneumaticType Type { get; }
         double Pressure { get; }
+        bool IsVisible { get; }
         string ToString(); 
         void CalcFlow(PneumaticModel model, List<IPneumaticElement> elements, int startIndex);
         double CalcPressure(PneumaticModel model);
@@ -1323,6 +1484,7 @@ namespace FluidSimu
         // Internal pressure
         public double Pressure { get; protected set; } = 0;
         public double LastQ { get; protected set; } = 0;
+        public bool IsVisible { get; protected set; }
         /// <summary>
         /// 
         /// </summary>
@@ -1332,6 +1494,7 @@ namespace FluidSimu
             Name = dto.Name;
             Comment = dto.Comment ?? "";
             Description = dto.Description ?? "";
+            IsVisible = dto.Visible;
             Reset();
         }
         public override string ToString()
@@ -1467,7 +1630,21 @@ namespace FluidSimu
 <EpuElement.cs>
 namespace FluidSimu
 {
-    public class EpuElement : BaseElement
+    /// <summary>
+    /// Defines an interface for pneumatic elements that can be
+    /// controlled externally during an interactive simulation.
+    /// </summary>
+    public interface IControllable
+    {
+        /// <summary>
+        /// Sets the primary control value for the element.
+        /// For a Valve, this could be 0.0 (close) or 1.0 (open).
+        /// For an EPU, this would be the target pressure in bar.
+        /// </summary>
+        /// <param name="value">The control value to set.</param>
+        void SetControlValue(double value);
+    }
+    public class EpuElement : BaseElement, IControllable
     {
         private readonly double Area; 
         // The connection port area for flow calculation
@@ -1507,6 +1684,13 @@ namespace FluidSimu
             _pt2Model = new PropValvePT2(
                 ParameterHelper.GetDouble(dto, "naturalFrequency", 20.0),
                 ParameterHelper.GetDouble(dto, "dampingRatio", 0.7));
+        }
+        /// <summary>
+        /// Implements IControllable to set the target pressure directly.
+        /// </summary>
+        public void SetControlValue(double value)
+        {
+            _targetPressure = value;
         }
         public void SetSchedule(List<EpuEventDto> timeline)
         {
@@ -1718,8 +1902,8 @@ namespace FluidSimu
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
             // Drücke an den Enden [bar]
-            double pTo = otherNode.Pressure;
             double pFrom = Pressure;
+            double pTo = otherNode.Pressure;
 
             // Volumenstrom [m³/s], positiv von From -> To
             double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area);
@@ -1734,8 +1918,11 @@ namespace FluidSimu
             double CurrentQ = qCharge * model.DeltaT;
 
             // From verliert Ladung, To gewinnt
-            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = -CurrentQ });
-            model.AddCharge(new ChargeData() { Id = Id, dQ = +CurrentQ });
+            // KORRIGIERTE LOGIK:
+            // Der Nachbar (To) gewinnt Ladung.
+            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +CurrentQ });
+            // Der Tank selbst (From) verliert Ladung.
+            model.AddCharge(new ChargeData() { Id = Id, dQ = -CurrentQ });
         }
     }
 }
@@ -1783,7 +1970,7 @@ namespace FluidSimu
 <ValveElement.cs>
 namespace FluidSimu
 {
-    public class ValveElement : BaseElement
+    public class ValveElement : BaseElement, IControllable
     {
         private readonly double Area;
         private readonly double Diameter;
@@ -1803,6 +1990,18 @@ namespace FluidSimu
             SwtichingTime = ParameterHelper.GetDouble(dto, "ValveSwitchingTime", 0);
 
             Area = Math.PI / 4 * Diameter * Diameter;
+        }
+        /// <summary>
+        /// Implements IControllable to set the commanded state (0 or 1).
+        /// </summary>
+        public void SetControlValue(double value)
+        {
+            // A new command is issued. The transition will start on the next Execute step.
+            if (Math.Abs(value - _commandedState) > 1e-6)
+            {
+                _commandedState = value;
+                _lastStateChangeTime = -1; // Reset to signal a new transition should start
+            }
         }
         // Method to inject the schedule after creation
         // Internal storage for the schedule
@@ -1946,6 +2145,45 @@ using System.Reflection;
 [assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v9.0", FrameworkDisplayName = ".NET 9.0")]
 
 </.NETCoreApp,Version=v9.0.AssemblyAttributes.cs>
+
+<FluidPlan.AssemblyInfo.cs>
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     Dieser Code wurde von einem Tool generiert.
+//     Laufzeitversion:4.0.30319.42000
+//
+//     Änderungen an dieser Datei können falsches Verhalten verursachen und gehen verloren, wenn
+//     der Code erneut generiert wird.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: System.Reflection.AssemblyCompanyAttribute("FluidPlan")]
+[assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyProductAttribute("FluidPlan")]
+[assembly: System.Reflection.AssemblyTitleAttribute("FluidPlan")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+
+// Von der MSBuild WriteCodeFragment-Klasse generiert.
+
+
+</FluidPlan.AssemblyInfo.cs>
+
+<FluidPlan.GlobalUsings.g.cs>
+// <auto-generated/>
+global using global::System;
+global using global::System.Collections.Generic;
+global using global::System.IO;
+global using global::System.Linq;
+global using global::System.Net.Http;
+global using global::System.Threading;
+global using global::System.Threading.Tasks;
+
+</FluidPlan.GlobalUsings.g.cs>
 
 <FluidPlan2.AssemblyInfo.cs>
 //------------------------------------------------------------------------------
