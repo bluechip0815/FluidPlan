@@ -1,0 +1,21 @@
+digraph PneumaticSchema {
+    rankdir=LR; // Layout from Left to Right
+    node [shape=box, fixedsize=true, width=1, height=1, labelloc=b];
+    Supply [label="Supply", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\supply.png", labelloc=b];
+    Exhaust [label="Exhaust", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\exhaust.png", labelloc=b];
+    CV1 [label="CV1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\checkvalve.png", labelloc=b];
+    R1 [label="R1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\pipe.png", labelloc=b];
+    R2 [label="R2", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\pipe.png", labelloc=b];
+    Junction [label="Junction", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\pipe.png", labelloc=b];
+    V1 [label="V1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\valve.png", labelloc=b];
+    V2 [label="V2", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\valve.png", labelloc=b];
+    T1 [label="T1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\tank.png", labelloc=b];
+    R1 -> Supply;
+    R1 -> V1;
+    V1 -> R2;
+    R2 -> CV1;
+    CV1 -> Junction;
+    Junction -> T1;
+    Junction -> V2;
+    V2 -> Exhaust;
+}

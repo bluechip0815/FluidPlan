@@ -1,0 +1,97 @@
+{
+  "modelName": "EPU Drain",
+  "description": "Supply -> R1 -> V1 -> T1, V1 -> V2 -> Exhaust)",
+  "connections": 
+  [ 
+	"Supply, R1",
+	"R1, V1", "V1, R2",
+	"R1, EPU","EPU, R3", "R3, V2", "V2, R2", 
+	"R2, T1"
+  ],
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "EPU",
+      "type": "EPU",
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters":
+	  {
+        "diameter": "2cm",
+		 "timeConstant": "1.1",
+         "maxDpDt": "35.0"
+      }
+    },
+    {
+      "name": "R1",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "R2",
+      "type": "Pipe",
+  	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "R3",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+      "description": "Befüllen T1",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V2",
+      "type": "Valve",
+      "description": "Ablassen über EPU",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+  	  "visible" : true,
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "2l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

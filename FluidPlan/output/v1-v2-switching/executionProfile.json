@@ -1,0 +1,25 @@
+{
+  "timeStepSeconds": 0.00025,
+  "steadyTolerance": 0.0001,
+  "hardTimeLimit": 50,
+  "kNonlinear": 4,
+
+  "valveTimelines": {
+    "V1": [
+      { "timeSeconds": 1.0, "state": 1.0 },
+      { "timeSeconds": 6.0, "state": 0.0 }
+    ],
+    "V2": [
+      { "timeSeconds": 10.0, "state": 1.0 },
+      { "timeSeconds": 15.0, "state": 0.0 },
+    ]
+  },
+
+  "epuTimelines": {
+    "EPU": [
+      { "timeSeconds": 1.0, "targetPressure": 1.5 },
+      { "timeSeconds": 3.0, "targetPressure": 8.0 },
+      { "timeSeconds": 5.0, "targetPressure": 2.3 }
+    ]
+  }
+}

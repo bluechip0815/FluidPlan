@@ -1,0 +1,52 @@
+{
+  "modelName": "EPU1",
+  "description": "Supply -> R1 -> V1 -> T1, V1 -> V2 -> Exhaust)",
+  "connections": 
+  [ 
+	"Supply, EPU",
+	"EPU, R1",
+	"R1, T1"
+  ],
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "pressure": "10.0"
+      }
+    },	
+    {
+      "name": "R1",
+      "type": "Pipe",
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },	
+    {
+      "name": "EPU",
+      "type": "EPU",
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters":
+	  {
+        "diameter": "2cm",
+		 "timeConstant": "1.1",
+         "maxDpDt": "35.0"
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "2l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

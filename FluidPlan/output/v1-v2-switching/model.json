@@ -1,0 +1,68 @@
+{
+  "modelName": "v1-v2-switching",
+  "description": "Supply -> R1 -> V1 -> T1, V1 -> V2 -> Exhaust)",
+  "connections": 
+  [ 
+	"R1, Supply",
+	"R1, V1",
+	"V1, V2, T1",
+	"V2, Exhaust"
+  ],
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "Exhaust",
+      "type": "Exhaust",
+      "description": "Auslass",
+	  "parameters": {
+        "pressure": "0.0"
+      }
+    },
+    {
+      "name": "R1",
+      "type": "Pipe",
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+      "description": "Befüllen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V2",
+      "type": "Valve",
+      "description": "Ablassen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "2l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

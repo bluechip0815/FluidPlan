@@ -1,0 +1,24 @@
+﻿using System.Text.Json.Serialization;
+
+namespace FluidSimu
+{
+    public class ElementDto
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "";
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+        [JsonPropertyName("comment")]
+        public string? Comment { get; set; }
+
+        [JsonPropertyName("visible")]
+        public bool Visible { get; set; }
+
+        [JsonPropertyName("parameters")]
+        public Dictionary<string, string> Parameters { get; set; } = new();
+    }
+}

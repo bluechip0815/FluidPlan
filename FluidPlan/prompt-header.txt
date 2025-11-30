@@ -1,0 +1,10 @@
+# Role
+your c# programmer and fluid engineer
+
+# Project
+
+Attached find a c# project.
+This program simulates the fluid flow of air between different elements.
+It estimates a solution of the given equiation by using a very little step time.
+
+#Task

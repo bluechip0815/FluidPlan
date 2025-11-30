@@ -1,0 +1,9 @@
+digraph PneumaticSchema {
+    rankdir=LR; // Layout from Left to Right
+    node [shape=box, fixedsize=true, width=1, height=1, labelloc=b];
+    Supply [label="Supply", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\supply.png", labelloc=b];
+    R1 [label="R1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\pipe.png", labelloc=b];
+    T1 [label="T1", image="D:\repos\FluidPlan2\FluidPlan2\schema_icons\tank.png", labelloc=b];
+    Supply -> R1;
+    R1 -> T1;
+}
