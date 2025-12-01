@@ -1,0 +1,11 @@
+(*====================================================================
+    STRUCT: Connection Definition
+    Description: Defines a physical connection between two elements
+                 by referencing their index in the element array.
+====================================================================*)
+TYPE ST_Connection :
+STRUCT
+    iElementA           : UINT;
+    iElementB           : UINT;
+END_STRUCT
+END_TYPE

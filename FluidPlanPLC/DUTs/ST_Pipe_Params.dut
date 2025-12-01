@@ -1,0 +1,5 @@
+TYPE ST_Pipe_Params :
+STRUCT
+    fLength : LREAL;
+END_STRUCT
+END_TYPE

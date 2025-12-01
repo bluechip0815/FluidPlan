@@ -1,0 +1,20 @@
+(*====================================================================
+    GLOBAL VARIABLE LIST: GVL
+    Description: Defines system-wide constants and global data.
+====================================================================*)
+VAR_GLOBAL CONSTANT
+    MAX_ELEMENTS    : UINT := 20;
+    MAX_CONNECTIONS : UINT := 20;
+END_VAR
+VAR_GLOBAL
+    // Static Model Definition (to be initialized)
+    g_arElementConfigs    : ARRAY[1..MAX_ELEMENTS] OF ST_Element_Config;
+    g_arConnections       : ARRAY[1..MAX_CONNECTIONS] OF ST_Connection;
+
+    // Real-time I/O between PLC logic and Simulation FB
+    g_arControlInputs     : ARRAY[1..MAX_ELEMENTS] OF LREAL;
+    g_arMonitoredPressures: ARRAY[1..MAX_ELEMENTS] OF LREAL;
+
+    // Simulation Control
+    g_bSimExecuteStep     : BOOL;
+END_VAR
