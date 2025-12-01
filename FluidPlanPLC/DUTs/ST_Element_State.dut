@@ -1,0 +1,17 @@
+(*====================================================================
+    STRUCT: Element State
+    Description: Holds the DYNAMIC state of an element during simulation.
+====================================================================*)
+TYPE ST_Element_State :
+STRUCT
+    fPressure_bar       : LREAL;
+
+    // State for Valves
+    fCurrentOpeningFactor: LREAL; // 0.0 to 1.0
+    fCommandedState     : LREAL; // 0.0 or 1.0
+    fLastStateChangeTime: LREAL; // Simulation time of last command change
+
+    // State for EPUs (PT2 Model)
+    fPressureVelocity   : LREAL;
+END_STRUCT
+END_TYPE
