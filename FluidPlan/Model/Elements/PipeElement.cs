@@ -6,44 +6,43 @@ namespace FluidSimu
         //private readonly double Roughness = 1.0;
         private readonly double Area = 0.0;
 
-        public PipeElement(ElementDto dto, int num) : base(dto, num)
-        {
-            Type = PneumaticType.pipe;
+public PipeElement(ElementDto dto, int num) : base(dto, num)
+{
+    Type = PneumaticType.pipe;
+    double length = ParameterHelper.GetLength(dto);
+    double diameter = ParameterHelper.GetDiameter(dto);
 
-            double length = ParameterHelper.GetLength(dto);
-            double diameter = ParameterHelper.GetDiameter(dto);
-            //Roughness = ParameterHelper.GetDouble(dto, "roughness", 1.0);
+    Pressure = ParameterHelper.GetPressure(dto);
+    Area = Math.PI / 4 * diameter * diameter;
+    Volume = Area * length;
 
-            Pressure = ParameterHelper.GetPressure(dto);
-            Area = Math.PI / 4 * diameter * diameter;
-            Volume = Area * length;
-        }
+    // A pipe's "port" is its own internal diameter.
+    ConnectionPort = new Port(diameter);
+}
 
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
-        {
-            // Drücke an den Enden [bar]
-            double pFrom = otherNode.Pressure;
-            double pTo = Pressure;
+protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+{
+    // --- START: IMPROVED FLOW LOGIC ---
+    // The effective area for flow is the SMALLER of the two connecting ports.
+    // This correctly models that the tightest restriction dictates the flow rate.
+    double effectiveArea = Math.Min(this.ConnectionPort.Area, otherNode.ConnectionPort.Area);
 
-            // Volumenstrom [m³/s], positiv von From -> To
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area);
+    double pFrom = otherNode.Pressure;
+    double pTo = Pressure;
 
-            // Mittlerer Druck für die Ladungsdefinition
-            double pMean = 0.5 * (pFrom + pTo);
+    double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea);
+    // --- END: IMPROVED FLOW LOGIC ---
 
-            // Ladungsstrom [m³·bar / s]
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
-            if (double.IsNaN(qCharge))
-                throw new ArgumentException($"Connection {Id}:{Name} has no pressure");
-            if (double.IsInfinity(qCharge))
-                throw new ArgumentException($"Connection {Id}:{Name} has Infinity pressure");
+    double pMean = 0.5 * (pFrom + pTo);
+    double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
+    if (double.IsNaN(qCharge))
+        throw new ArgumentException($"Connection {Id}:{Name} has no pressure");
+    if (double.IsInfinity(qCharge))
+        throw new ArgumentException($"Connection {Id}:{Name} has Infinity pressure");
 
-            // Änderung der Ladung während dt
-            double CurrentQ = qCharge * model.DeltaT;
-
-            // From verliert Ladung, To gewinnt
-            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = -CurrentQ });
-            model.AddCharge(new ChargeData() { Id = Id, dQ = +CurrentQ });
-        }
+    double CurrentQ = qCharge * model.DeltaT;
+    model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = -CurrentQ });
+    model.AddCharge(new ChargeData() { Id = Id, dQ = +CurrentQ });
+}
     }
 }

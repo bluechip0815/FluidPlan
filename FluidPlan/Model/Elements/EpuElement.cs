@@ -16,7 +16,6 @@ namespace FluidSimu
     }
     public class EpuElement : BaseElement, IControllable
     {
-        private readonly double Area; 
         // The connection port area for flow calculation
         private List<EpuEventDto> _schedule = new();
         private readonly List<IPneumaticElement> _neighbors = new();
@@ -34,10 +33,11 @@ namespace FluidSimu
         {
             Type = PneumaticType.epu;
 
-            // Define the connection port size for the EPU
-            double diameter = ParameterHelper.GetDiameter(dto);
-            if (diameter == 0) diameter = 0.02; // Default to 2cm if not specified
-            this.Area = Math.PI / 4 * diameter * diameter;
+            // An EPU now has a specific port diameter for its connection.
+            double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
+            if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
+            if (portDiameter == 0.0) portDiameter = 0.02; // Sane default
+            ConnectionPort = new Port(portDiameter);
 
             Pressure = ParameterHelper.GetPressure(dto);
 
@@ -82,13 +82,12 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            // The pressure "From" is this EPU's internally regulated pressure.
+            double effectiveArea = Math.Min(this.ConnectionPort.Area, otherNode.ConnectionPort.Area);
+
             double pFrom = this.Pressure;
-            // The pressure "To" is the neighbor's pressure.
             double pTo = otherNode.Pressure;
 
-            // Calculate flow through our connection port.
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area);
+            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea);
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;

@@ -2,41 +2,33 @@ namespace FluidSimu
 {
     public class TankElement : BaseElement
     {
-        private readonly double Area;
-        public TankElement(ElementDto dto, int num) : base(dto, num)
-        {
-            Type = PneumaticType.tank;
+public TankElement(ElementDto dto, int num) : base(dto, num)
+{
+    Type = PneumaticType.tank;
+    Pressure = ParameterHelper.GetPressure(dto);
+    Volume = ParameterHelper.GetVolume(dto);
 
-            Pressure = ParameterHelper.GetPressure(dto);
-            Volume = ParameterHelper.GetVolume(dto);
-            double diameter = ParameterHelper.GetDiameter(dto);
+    // A tank now has a specific port diameter for its connection.
+    double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
+    if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
+    ConnectionPort = new Port(portDiameter);
+}
 
-            Area = Math.PI / 4 * diameter * diameter;
-        }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
-        {
-            // Drücke an den Enden [bar]
-            double pFrom = Pressure;
-            double pTo = otherNode.Pressure;
+// DoStep logic is identical to PipeElement's new logic.
+protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+{
+    double effectiveArea = Math.Min(this.ConnectionPort.Area, otherNode.ConnectionPort.Area);
 
-            // Volumenstrom [m³/s], positiv von From -> To
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area);
+    double pFrom = Pressure;
+    double pTo = otherNode.Pressure;
 
-            // Mittlerer Druck für die Ladungsdefinition
-            double pMean = 0.5 * (pFrom + pTo);
+    double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea);
+    double pMean = 0.5 * (pFrom + pTo);
+    double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
+    double CurrentQ = qCharge * model.DeltaT;
 
-            // Ladungsstrom [m³·bar / s]
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
-
-            // Änderung der Ladung während dt
-            double CurrentQ = qCharge * model.DeltaT;
-
-            // From verliert Ladung, To gewinnt
-            // KORRIGIERTE LOGIK:
-            // Der Nachbar (To) gewinnt Ladung.
-            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +CurrentQ });
-            // Der Tank selbst (From) verliert Ladung.
-            model.AddCharge(new ChargeData() { Id = Id, dQ = -CurrentQ });
-        }
+    model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +CurrentQ });
+    model.AddCharge(new ChargeData() { Id = Id, dQ = -CurrentQ });
+}
     }
 }

@@ -2,36 +2,34 @@ namespace FluidSimu
 {
     public class SupplyElement : BaseElement
     {
-        private readonly double Area;
-        public SupplyElement(ElementDto dto, int num, bool Exhaust) : base(dto, num)
-        {
-            Type = Exhaust ? PneumaticType.exhaust : PneumaticType.supply;
-            Pressure = Exhaust ? 0 : ParameterHelper.GetPressure(dto);
+public SupplyElement(ElementDto dto, int num, bool Exhaust) : base(dto, num)
+{
+    Type = Exhaust ? PneumaticType.exhaust : PneumaticType.supply;
+    Pressure = Exhaust ? 0 : ParameterHelper.GetPressure(dto);
 
-            // A supply needs a connection diameter to calculate flow. Let's use a sane default.
-            double diameter = ParameterHelper.GetDiameter(dto);
-            if (diameter == 0) diameter = 0.02; // Default to 2cm if not specified
-            Area = Math.PI / 4 * diameter * diameter;
-        }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
-        {
-            // Pressure "From" is always the supply's constant pressure.
-            double pFrom = this.Pressure;
-            // Pressure "To" is the neighbor's current pressure.
-            double pTo = otherNode.Pressure;
+    // Supplies and exhausts now have a configurable port diameter.
+    // Use "portDiameter" first, but fall back to "diameter" for backward compatibility.
+    double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
+    if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
+    if (portDiameter == 0.0) portDiameter = 0.02; // Sane default if neither is specified
+    ConnectionPort = new Port(portDiameter);
+}
 
-            // Calculate the volume flow based on the pressure difference.
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area);
+// DoStep logic is identical to PipeElement's new logic.
+protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+{
+    double effectiveArea = Math.Min(this.ConnectionPort.Area, otherNode.ConnectionPort.Area);
 
-            // Calculate the charge flow.
-            double pMean = 0.5 * (pFrom + pTo);
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
-            // Calculate the total charge transferred during this time step.
-            double currentQ = qCharge * model.DeltaT;
-            // The neighbor GAINS charge from the supply.
-            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +currentQ });
-            // The supply itself (an infinite source) does not lose charge. We add nothing for this.Id.
-        }
+    double pFrom = this.Pressure;
+    double pTo = otherNode.Pressure;
+
+    double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea);
+    double pMean = 0.5 * (pFrom + pTo);
+    double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
+    double currentQ = qCharge * model.DeltaT;
+
+    model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +currentQ });
+}
         public override double CalcPressure(PneumaticModel model)
         {
             return 0;
