@@ -5,15 +5,11 @@ namespace FluidSimu
     public static class ParameterHelper
     {
         public record ParamSet { public double value = 0.0; public string unit = ""; }
-        public static double GetDiameter(ElementDto dto)
-        {
-            // Standard m
-            ParamSet v = GetParam(dto, "diameter", 0.0);
+        public static double GetDiameter(ElementDto dto, string key = "diameter") {
+            ParamSet v = GetParam(dto, key, 0.0);
             double val = v.value;
-            if (v.unit.Equals("cm"))
-                val /= 100;
-            if (v.unit.Equals("mm"))
-                val /= 1000;
+            if (v.unit.Equals("cm")) val /= 100;
+            if (v.unit.Equals("mm")) val /= 1000;
             return val;
         }
         public static double GetPressure(ElementDto dto)

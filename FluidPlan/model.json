@@ -89,7 +89,7 @@
       "description": "Verbrauchertank am Knoten 6",
 	  "parameters": {
         "volume": "2l",
-        "diameter": "2cm",
+        "portDiameter": "5mm",
         "pressure": "0.0"
       }
     }
