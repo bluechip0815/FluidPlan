@@ -26,6 +26,7 @@ namespace FluidSimu
         }
         // The target pressure (pSoll) from the schedule.
         private double _targetPressure = 0.0;
+        private double Area = 0.0;  
         public IReadOnlyList<IPneumaticElement> Neighbors => _neighbors;
         private PropValvePT1 _pt1Model { get; set; } = new();
         private PropValvePT2 _pt2Model { get; set; } = new();
@@ -37,7 +38,8 @@ namespace FluidSimu
             double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
             if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
             if (portDiameter == 0.0) portDiameter = 0.02; // Sane default
-            ConnectionPort = new Port(portDiameter);
+
+            Area = Math.PI / 4 * portDiameter * portDiameter;
 
             Pressure = ParameterHelper.GetPressure(dto);
 
@@ -82,12 +84,11 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            double effectiveArea = Math.Min(this.ConnectionPort.Area, otherNode.ConnectionPort.Area);
-
             double pFrom = this.Pressure;
             double pTo = otherNode.Pressure;
 
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea);
+            // Calculate flow through our connection port.
+            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient);
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;

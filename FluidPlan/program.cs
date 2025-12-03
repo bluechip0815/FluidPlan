@@ -49,8 +49,6 @@ namespace FluidSimu
             double tolerance = profileDto.SteadyTolerance; // e.g. 0.00001 bar
             // Safety break: Stop after xxx seconds even if not steady (prevents infinite loops)
             double hardTimeLimit = profileDto.HardTimeLimit;
-            // Add special physics
-            FlowPhysics.Initialize(profileDto.KNonlinear);
             // Determine Minimum Run Time (script time + buffer)
             Console.WriteLine($"\nStarting Simulation (dt={profileDto.TimeStepSeconds}s, End={hardTimeLimit}s)...");
 
@@ -119,7 +117,6 @@ namespace FluidSimu
             // Use a fixed timestep for interactive mode
             double dt = 0.001; // 1ms
             model.Reset(dt);
-            FlowPhysics.Initialize(4.0); // Use a default K value
 
             var controllables = model.Elements.OfType<IControllable>().ToDictionary(c => ((IPneumaticElement)c).Name, c => c);
             var visibles = model.Elements.Where(e => e.IsVisible).ToList();

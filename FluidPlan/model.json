@@ -68,9 +68,10 @@
       "name": "V1",
       "type": "Valve",
       "description": "Befüllen T1",
+      "flowCoefficient": 1.5,
 	  "parameters": {
         "pressure": "0.0",
-        "diameter": "2cm",
+        "diameter": "2cm"
       }
     },
     {
