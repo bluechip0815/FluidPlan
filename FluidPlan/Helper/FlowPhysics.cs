@@ -29,6 +29,21 @@
 
             return sign * q;
         }
+        public static double ComputeSmoothedVolumeFlow(double pUp, double pDown, double area, double flowCoefficient, double lastFlow, double timeStep)
+        {
+            // 1. Calculate the "raw" instantaneous flow based on current pressures
+            double rawFlow = ComputeVolumeFlow(pUp, pDown, area, flowCoefficient);
+
+            // 2. Apply a simple low-pass filter (exponential smoothing)
+            // The 'alpha' value determines how much weight is given to the new rawFlow.
+            // A smaller alpha makes the flow smoother.
+            // We can tie this to the timeStep to make it somewhat independent of the simulation frequency.
+            double alpha = 1.0 - Math.Exp(-timeStep / 0.005); // 5ms time constant for smoothing
+
+            double smoothedFlow = alpha * rawFlow + (1.0 - alpha) * lastFlow;
+
+            return smoothedFlow;
+        }
 
         public static double VolumeFlowToChargeFlow(double volumeFlow, double meanPressureBar)
         {

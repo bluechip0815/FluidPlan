@@ -60,10 +60,14 @@ namespace FluidSimu
 
             // Directional and cracking pressure checks
             if (pFrom <= pTo + _openingDeltaP)
+            {
+                LastFlow = 0;
                 return; // Valve is closed
+            }
 
             // If open, calculate flow between INLET and OUTLET
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area, FlowCoefficient);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
+            LastFlow = q;
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;

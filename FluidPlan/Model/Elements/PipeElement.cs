@@ -27,7 +27,8 @@ namespace FluidSimu
             double pFrom = otherNode.Pressure;
             double pTo = Pressure;
 
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area, FlowCoefficient);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
+            LastFlow = q;
 
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);

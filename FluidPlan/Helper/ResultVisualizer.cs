@@ -5,7 +5,7 @@ namespace FluidSimu
 {
     public static class ResultVisualizer
     {
-        public static void CreateCharts(string csvPath, string outputFileName)
+        public static void CreateCharts(string csvPath, string outputFileName, SimulationModelDto model)
         {
             Console.WriteLine("Reading results...");
             var data = ReadCsv(csvPath);
@@ -13,14 +13,14 @@ namespace FluidSimu
             
             // 1. Create Static Image (The whole history)
             Console.WriteLine("Generating static chart...");
-            CreateStaticImage(data, outputFileName);
+            CreateStaticImage(data, outputFileName, model);
 
             // 2. Create Animated GIF (Replay)
             //Console.WriteLine("Generating animated GIF (this may take time)...");
             //CreateAnimatedGif(data, Path.Combine(outputFolder, "simulation_replay.gif"));
         }
 
-        private static void CreateStaticImage(SimulationData data, string outputPath)
+        private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
         {
             var plt = new Plot();
 
@@ -30,12 +30,20 @@ namespace FluidSimu
             plt.YLabel("Pressure [bar]");
             plt.ShowLegend();
 
-            // Add a line for each element
-            foreach (var element in data.Series)
+            // Create a lookup for visibility
+            var visibilityLookup = model.GetAllElements()
+                                        .ToDictionary(e => e.Name, e => e.IsVisible);
+
+            // Add a line for each VISIBLE element
+            foreach (var series in data.Series)
             {
-                var sp = plt.Add.Scatter(data.Time, element.Value);
-                sp.LegendText = element.Key;
-                sp.LineWidth = 2;
+                // Only plot if the element is marked as visible in the model JSON
+                if (visibilityLookup.TryGetValue(series.Key, out bool isVisible) && isVisible)
+                {
+                    var sp = plt.Add.Scatter(data.Time, series.Value);
+                    sp.LegendText = series.Key;
+                    sp.LineWidth = 2;
+                }
             }
 
             // Save

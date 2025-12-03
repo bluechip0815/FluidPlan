@@ -24,7 +24,8 @@ namespace FluidSimu
 
             double effectiveArea = Area * KvFactor;
 
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, effectiveArea, FlowCoefficient);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
+            LastFlow = q;
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double CurrentQ = qCharge * model.DeltaT;
