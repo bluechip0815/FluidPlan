@@ -18,6 +18,9 @@ namespace FluidSimu
         [JsonPropertyName("visible")]
         public bool Visible { get; set; }
 
+        [JsonPropertyName("flowCoefficient")]
+        public double FlowCoefficient { get; set; } = 1.0;
+
         [JsonPropertyName("parameters")]
         public Dictionary<string, string> Parameters { get; set; } = new();
     }

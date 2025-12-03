@@ -24,6 +24,7 @@ namespace FluidSimu
         public double Pressure { get; protected set; } = 0;
         public double LastQ { get; protected set; } = 0;
         public bool IsVisible { get; protected set; }
+        public double FlowCoefficient { get; protected set; } = 1.0;
         /// <summary>
         /// 
         /// </summary>
@@ -34,6 +35,7 @@ namespace FluidSimu
             Comment = dto.Comment ?? "";
             Description = dto.Description ?? "";
             IsVisible = dto.Visible;
+            FlowCoefficient = dto.FlowCoefficient;
             Reset();
         }
         public override string ToString()
