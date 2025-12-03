@@ -20,9 +20,6 @@ namespace FluidSimu
             double diameter = ParameterHelper.GetDiameter(dto);
             Area = Math.PI / 4 * diameter * diameter;
             _openingDeltaP = ParameterHelper.GetDouble(dto, "openingdeltap", 0.0);
-
-            // CheckValves are restrictions themselves; their port should be non-limiting.
-            ConnectionPort = new Port(1.0); // 1.0 meter diameter = huge area
         }
         // --- Neighbor management methods ---
         public void RegisterNeighbor(IPneumaticElement element)

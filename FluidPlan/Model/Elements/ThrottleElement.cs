@@ -16,9 +16,6 @@ namespace FluidSimu
 
             // z.B. ein Drossel-Koeffizient (0..1 oder größer)
             KvFactor = ParameterHelper.GetDouble(dto, "kv", 1.0);
-
-            // Throttles are restrictions themselves; their port should be non-limiting.
-            ConnectionPort = new Port(1.0); // 1.0 meter diameter = huge area
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
