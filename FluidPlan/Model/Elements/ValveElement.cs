@@ -140,7 +140,7 @@ namespace FluidSimu
             double effectiveArea = Area * opening;
 
             // Calculate flow: q is positive if p1 > p2, negative if p2 > p1
-            double q = FlowPhysics.ComputeVolumeFlow(p1, p2, effectiveArea);
+            double q = FlowPhysics.ComputeVolumeFlow(p1, p2, effectiveArea, FlowCoefficient);
 
             // If q is positive, flow is from element1 to element2.
             // If q is negative, flow is from element2 to element1.

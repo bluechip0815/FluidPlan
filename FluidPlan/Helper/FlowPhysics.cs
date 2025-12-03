@@ -5,36 +5,7 @@
         public const double Rho = 1.2;
         public const double DeltaPCritical = 0.5;
 
-        // Use a static field for the actual storage
-        private static double _kNonlinear = 1.0; // Default value
-
-        // Public static property with a private setter
-        // Allows reading publicly, but setting only within this class (e.g., via a static method)
-        // We calculate KLinear dynamically to ensure continuity at the threshold
-        // Condition: K_lin * P_crit = K_non * sqrt(P_crit)
-        // Therefore: K_lin = K_non / sqrt(P_crit)
-        public static double KNonlinear
-        {
-            get => _kNonlinear;
-            private set
-            {
-                _kNonlinear = value;
-                // Crucial: Recalculate KLinear whenever KNonlinear changes
-                KLinear = _kNonlinear / Math.Sqrt(DeltaPCritical);
-            }
-        }
-
-        // KLinear also needs to be settable within the class (private set)
-        // and its initial value can be calculated here.
-        public static double KLinear { get; private set; } = _kNonlinear / Math.Sqrt(DeltaPCritical);
-
-        // --- New static method to initialize/set these values from outside ---
-        public static void Initialize(double kNonlinearValue)
-        {
-            KNonlinear = kNonlinearValue; // Use the property setter to trigger KLinear recalculation
-        }
-
-        public static double ComputeVolumeFlow(double pUp, double pDown, double area)
+        public static double ComputeVolumeFlow(double pUp, double pDown, double area, double flowCoefficient)
         {
             double dp = pUp - pDown;
             if (Math.Abs(dp) < 1e-9 || area <= 0.0)
@@ -44,14 +15,16 @@
             double absDp = Math.Abs(dp);
             double q;
 
+            double kLinear = flowCoefficient / Math.Sqrt(DeltaPCritical);
+
             if (absDp < DeltaPCritical)
             {
                 // Now this connects smoothly to the sqrt curve
-                q = KLinear * area * absDp;
+                q = kLinear * area * absDp;
             }
             else
             {
-                q = KNonlinear * area * Math.Sqrt(absDp);
+                q = flowCoefficient * area * Math.Sqrt(absDp);
             }
 
             return sign * q;

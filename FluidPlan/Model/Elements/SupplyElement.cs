@@ -21,7 +21,7 @@ namespace FluidSimu
             double pTo = otherNode.Pressure;
 
             // Calculate the volume flow based on the pressure difference.
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area);
+            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient);
 
             // Calculate the charge flow.
             double pMean = 0.5 * (pFrom + pTo);

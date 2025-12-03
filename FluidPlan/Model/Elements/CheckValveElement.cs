@@ -63,7 +63,7 @@ namespace FluidSimu
                 return; // Valve is closed
 
             // If open, calculate flow between INLET and OUTLET
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area);
+            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area, FlowCoefficient);
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;

@@ -20,7 +20,7 @@ namespace FluidSimu
             double pTo = otherNode.Pressure;
 
             // Volumenstrom [m³/s], positiv von From -> To
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area);
+            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area, FlowCoefficient);
 
             // Mittlerer Druck für die Ladungsdefinition
             double pMean = 0.5 * (pFrom + pTo);
