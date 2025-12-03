@@ -9,8 +9,6 @@ namespace FluidSimu
 
         [JsonPropertyName("steadyTolerance")]
         public double SteadyTolerance { get; set; }
-        [JsonPropertyName("kNonlinear")]
-        public double KNonlinear { get; set; }
         [JsonPropertyName("hardTimeLimit")]
         public double HardTimeLimit { get; set; }
         // valveId -> Timeline
