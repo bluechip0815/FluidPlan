@@ -23,7 +23,8 @@ namespace FluidSimu
             double pTo = otherNode.Pressure;
 
             // Volumenstrom [m³/s], positiv von From -> To
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, Area, FlowCoefficient);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
+            LastFlow = q;
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double CurrentQ = qCharge * model.DeltaT;

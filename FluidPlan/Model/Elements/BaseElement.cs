@@ -23,6 +23,7 @@ namespace FluidSimu
         // Internal pressure
         public double Pressure { get; protected set; } = 0;
         public double LastQ { get; protected set; } = 0;
+        public double LastFlow { get; protected set; } = 0;
         public bool IsVisible { get; protected set; }
         public double FlowCoefficient { get; protected set; } = 1.0;
         /// <summary>

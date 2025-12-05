@@ -88,7 +88,8 @@ namespace FluidSimu
             double pTo = otherNode.Pressure;
 
             // Calculate flow through our connection port.
-            double q = FlowPhysics.ComputeVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient, LastFlow, model.DeltaT);
+            LastFlow = q;
             double pMean = 0.5 * (pFrom + pTo);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;

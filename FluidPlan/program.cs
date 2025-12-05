@@ -86,8 +86,10 @@ namespace FluidSimu
             }
 
             Console.WriteLine($"\nSimulation finished. Results saved to {outputPath}");
-            ResultVisualizer.CreateCharts(Path.Combine(outputPath, logFileName), 
-                Path.Combine(outputPath, FileNameSanitizer.Sanitize(modelDto.ModelName)+"_chart.png"));
+            ResultVisualizer.CreateCharts(
+                Path.Combine(outputPath, logFileName),
+                Path.Combine(outputPath, FileNameSanitizer.Sanitize(modelDto.ModelName)+"_chart.png"),
+                modelDto);
         }
         private static T LoadJson<T>(string path)
         {
