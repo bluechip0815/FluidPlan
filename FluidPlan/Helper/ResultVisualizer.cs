@@ -16,70 +16,86 @@ namespace FluidSimu
             CreateStaticImage(data, outputFileName, model);
         }
 
-        private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
+private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
+{
+    // --- Chart 1: Pressure Distribution ---
+    var pltPressure = new Plot();
+    pltPressure.Title("Pressure Distribution");
+    pltPressure.XLabel("Time [s]");
+    pltPressure.YLabel("Pressure [bar]");
+    pltPressure.ShowLegend();
+
+    var visibilityLookup = model.Elements.ToDictionary(e => e.Name, e => e.Visible);
+
+    foreach (var series in data.Series)
+    {
+        if (visibilityLookup.TryGetValue(series.Key, out bool isVisible) && isVisible)
         {
-            // --- Chart 1: Pressure Distribution ---
-            var pltPressure = new Plot();
-            pltPressure.Title("Pressure Distribution");
-            pltPressure.XLabel("Time [s]");
-            pltPressure.YLabel("Pressure [bar]");
-            pltPressure.ShowLegend();
-
-            var visibilityLookup = model.Elements.ToDictionary(e => e.Name, e => e.Visible);
-
-            foreach (var series in data.Series)
-            {
-                if (visibilityLookup.TryGetValue(series.Key, out bool isVisible) && isVisible)
-                {
-                    var sp = pltPressure.Add.Scatter(data.Time, series.Value);
-                    sp.LegendText = series.Key;
-                    sp.LineWidth = 2;
-                }
-            }
-
-            // --- Chart 2: Valve Actions ---
-            var pltValves = new Plot();
-            pltValves.Title("Valve Actions");
-            pltValves.XLabel("Time [s]");
-
-            var valveElements = model.Elements
-                                     .Where(e => e.Type.Equals("Valve", StringComparison.OrdinalIgnoreCase))
-                                     .Take(8)
-                                     .ToList();
-
-            if (valveElements.Any())
-            {
-                var yTicks = new List<Tick>();
-                double yPos = 0;
-
-                foreach (var valve in valveElements)
-                {
-                    if (data.Series.TryGetValue(valve.Name, out var valveData))
-                    {
-                        var signal = pltValves.Add.Signal(valveData.ToArray());
-                        signal.Data.YOffset = yPos;
-                        signal.LineWidth = 10;
-                        signal.Color = pltPressure.GetNextColor();
-                        yTicks.Add(new Tick(yPos, valve.Name));
-                        yPos++;
-                    }
-                }
-                pltValves.YAxis.ManualTickPositions(yTicks.ToArray());
-                pltValves.YAxis.TickLabelStyle.Alignment = Alignment.MiddleLeft;
-                pltValves.YAxis.SetBoundary(yTicks.First().Position - 0.5, yTicks.Last().Position + 0.5);
-            }
-
-            // --- Combine and Save ---
-            var combinedPlot = new Plot();
-            var layout = combinedPlot.Layout;
-            layout.Clear(); // Remove default layout components
-            layout.Add(new ScottPlot.Panels.PlotPanel(pltPressure), 0, 0);
-            layout.Add(new ScottPlot.Panels.PlotPanel(pltValves), 1, 0);
-            layout.RowSizes = new RowSize[] { new(1, SizeUnit.Fraction), new(0.5, SizeUnit.Fraction) };
-
-            combinedPlot.SavePng(outputPath, 1200, 1200);
-            Console.WriteLine($"Saved: {outputPath}");
+            var sp = pltPressure.Add.Scatter(data.Time, series.Value);
+            sp.LegendText = series.Key;
+            sp.LineWidth = 2;
         }
+    }
+
+    // --- Chart 2: Valve Actions ---
+    var pltValves = new Plot();
+    pltValves.Title("Valve Actions");
+    pltValves.XLabel("Time [s]");
+
+    var valveElements = model.Elements
+                             .Where(e => e.Type.Equals("Valve", StringComparison.OrdinalIgnoreCase))
+                             .Take(8)
+                             .ToList();
+
+    if (valveElements.Any())
+    {
+        var yTicks = new List<Tick>();
+        double yPos = 0;
+
+        foreach (var valve in valveElements)
+        {
+            if (data.Series.TryGetValue(valve.Name, out var valveData))
+            {
+                var signal = pltValves.Add.Signal(valveData.ToArray());
+                signal.Data.YOffset = yPos;
+                signal.LineWidth = 10;
+                signal.Color = pltPressure.GetNextColor();
+                yTicks.Add(new Tick(yPos, valve.Name));
+                yPos++;
+            }
+        }
+
+        if (yTicks.Any())
+        {
+            pltValves.Axes.YAxis.ManualTickPositions(yTicks.ToArray());
+            pltValves.Axes.YAxis.TickLabelStyle.Alignment = Alignment.MiddleLeft;
+            pltValves.Axes.YAxis.SetBoundary(yTicks.First().Position - 0.5, yTicks.Last().Position + 0.5);
+        }
+    }
+
+    // --- Combine and Save ---
+    // Define the dimensions and layout
+    int width = 1200;
+    int heightPressure = 800;
+    int heightValves = 400;
+    int totalHeight = heightPressure + heightValves;
+
+    // Create a bitmap to draw on
+    using var bmp = new SKBitmap(width, totalHeight);
+    using var canvas = new SKCanvas(bmp);
+    canvas.Clear(SKColors.White);
+
+    // Render each plot to a specific rectangle on the canvas
+    pltPressure.Render(canvas, new PixelRect(0, 0, width, heightPressure));
+    pltValves.Render(canvas, new PixelRect(0, heightPressure, width, heightValves));
+
+    // Save the combined image
+    using var image = SKImage.FromBitmap(bmp);
+    using var stream = File.OpenWrite(outputPath);
+    image.Encode(SKEncodedImageFormat.Png, 100).SaveTo(stream);
+
+    Console.WriteLine($"Saved: {outputPath}");
+}
 
         //private static void CreateAnimatedGif(SimulationData data, string outputPath)
         //{
