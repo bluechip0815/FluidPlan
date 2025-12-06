@@ -4,6 +4,7 @@
     {
         public const double Rho = 1.2;
         public const double DeltaPCritical = 0.5;
+        private const double SMOOTHING_TIME_CONSTANT_SECONDS = 0.005;
 
         public static double ComputeVolumeFlow(double pUp, double pDown, double area, double flowCoefficient)
         {
@@ -38,7 +39,7 @@
             // The 'alpha' value determines how much weight is given to the new rawFlow.
             // A smaller alpha makes the flow smoother.
             // We can tie this to the timeStep to make it somewhat independent of the simulation frequency.
-            double alpha = 1.0 - Math.Exp(-timeStep / 0.005); // 5ms time constant for smoothing
+            double alpha = 1.0 - Math.Exp(-timeStep / SMOOTHING_TIME_CONSTANT_SECONDS); // 5ms time constant for smoothing
 
             double smoothedFlow = alpha * rawFlow + (1.0 - alpha) * lastFlow;
 
