@@ -1,5 +1,6 @@
 using ScottPlot;
-//using ImageMagick; // Required for GIF creation
+using SkiaSharp;
+using System.Linq;
 
 namespace FluidSimu
 {
@@ -10,44 +11,73 @@ namespace FluidSimu
             Console.WriteLine("Reading results...");
             var data = ReadCsv(csvPath);
 
-            
             // 1. Create Static Image (The whole history)
             Console.WriteLine("Generating static chart...");
             CreateStaticImage(data, outputFileName, model);
-
-            // 2. Create Animated GIF (Replay)
-            //Console.WriteLine("Generating animated GIF (this may take time)...");
-            //CreateAnimatedGif(data, Path.Combine(outputFolder, "simulation_replay.gif"));
         }
 
         private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
         {
-            var plt = new Plot();
+            // --- Chart 1: Pressure Distribution ---
+            var pltPressure = new Plot();
+            pltPressure.Title("Pressure Distribution");
+            pltPressure.XLabel("Time [s]");
+            pltPressure.YLabel("Pressure [bar]");
+            pltPressure.ShowLegend();
 
-            // Setup basic style
-            plt.Title("Pressure Distribution");
-            plt.XLabel("Time [s]");
-            plt.YLabel("Pressure [bar]");
-            plt.ShowLegend();
+            var visibilityLookup = model.Elements.ToDictionary(e => e.Name, e => e.Visible);
 
-            // Create a lookup for visibility
-            var visibilityLookup = model.Elements
-                                        .ToDictionary(e => e.Name, e => e.Visible);
-
-            // Add a line for each VISIBLE element
             foreach (var series in data.Series)
             {
-                // Only plot if the element is marked as visible in the model JSON
                 if (visibilityLookup.TryGetValue(series.Key, out bool isVisible) && isVisible)
                 {
-                    var sp = plt.Add.Scatter(data.Time, series.Value);
+                    var sp = pltPressure.Add.Scatter(data.Time, series.Value);
                     sp.LegendText = series.Key;
                     sp.LineWidth = 2;
                 }
             }
 
-            // Save
-            plt.SavePng(outputPath, 1200, 800);
+            // --- Chart 2: Valve Actions ---
+            var pltValves = new Plot();
+            pltValves.Title("Valve Actions");
+            pltValves.XLabel("Time [s]");
+
+            var valveElements = model.Elements
+                                     .Where(e => e.Type.Equals("Valve", StringComparison.OrdinalIgnoreCase))
+                                     .Take(8)
+                                     .ToList();
+
+            if (valveElements.Any())
+            {
+                var yTicks = new List<Tick>();
+                double yPos = 0;
+
+                foreach (var valve in valveElements)
+                {
+                    if (data.Series.TryGetValue(valve.Name, out var valveData))
+                    {
+                        var signal = pltValves.Add.Signal(valveData.ToArray());
+                        signal.Data.YOffset = yPos;
+                        signal.LineWidth = 10;
+                        signal.Color = pltPressure.GetNextColor();
+                        yTicks.Add(new Tick(yPos, valve.Name));
+                        yPos++;
+                    }
+                }
+                pltValves.YAxis.ManualTickPositions(yTicks.ToArray());
+                pltValves.YAxis.TickLabelStyle.Alignment = Alignment.MiddleLeft;
+                pltValves.YAxis.SetBoundary(yTicks.First().Position - 0.5, yTicks.Last().Position + 0.5);
+            }
+
+            // --- Combine and Save ---
+            var combinedPlot = new Plot();
+            var layout = combinedPlot.Layout;
+            layout.Clear(); // Remove default layout components
+            layout.Add(new ScottPlot.Panels.PlotPanel(pltPressure), 0, 0);
+            layout.Add(new ScottPlot.Panels.PlotPanel(pltValves), 1, 0);
+            layout.RowSizes = new RowSize[] { new(1, SizeUnit.Fraction), new(0.5, SizeUnit.Fraction) };
+
+            combinedPlot.SavePng(outputPath, 1200, 1200);
             Console.WriteLine($"Saved: {outputPath}");
         }
 
