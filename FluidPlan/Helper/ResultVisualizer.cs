@@ -31,8 +31,8 @@ namespace FluidSimu
             plt.ShowLegend();
 
             // Create a lookup for visibility
-            var visibilityLookup = model.GetAllElements()
-                                        .ToDictionary(e => e.Name, e => e.IsVisible);
+            var visibilityLookup = model.Elements
+                                        .ToDictionary(e => e.Name, e => e.Visible);
 
             // Add a line for each VISIBLE element
             foreach (var series in data.Series)
