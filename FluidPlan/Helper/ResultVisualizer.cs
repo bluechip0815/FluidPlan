@@ -59,7 +59,7 @@ private static void CreateStaticImage(SimulationData data, string outputPath, Si
                 var signal = pltValves.Add.Signal(valveData.ToArray());
                 signal.Data.YOffset = yPos;
                 signal.LineWidth = 10;
-                signal.Color = pltPressure.GetNextColor();
+                signal.Color = ScottPlot.Colors.Black;
                 yTicks.Add(new Tick(yPos, valve.Name));
                 yPos++;
             }
@@ -67,9 +67,9 @@ private static void CreateStaticImage(SimulationData data, string outputPath, Si
 
         if (yTicks.Any())
         {
-            pltValves.Axes.YAxis.ManualTickPositions(yTicks.ToArray());
-            pltValves.Axes.YAxis.TickLabelStyle.Alignment = Alignment.MiddleLeft;
-            pltValves.Axes.YAxis.SetBoundary(yTicks.First().Position - 0.5, yTicks.Last().Position + 0.5);
+            pltValves.Axes.Left.ManualTickPositions(yTicks.ToArray());
+            pltValves.Axes.Left.TickLabelStyle.Alignment = Alignment.MiddleLeft;
+            pltValves.Axes.Left.SetBoundary(yTicks.First().Position - 0.5, yTicks.Last().Position + 0.5);
         }
     }
 
