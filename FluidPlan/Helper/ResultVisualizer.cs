@@ -82,8 +82,16 @@ namespace FluidSimu
 
                 // Align X axes
                 valvePlot.Axes.SetLimitsX(mainPlot.Axes.GetLimits());
-
                 mainPlot.Axes.Bottom.TickLabelStyle.IsVisible = false;
+
+                // Render plots to measure axis sizes
+                _ = mainPlot.GetImageBytes(width, mainChartHeight);
+                _ = valvePlot.GetImageBytes(width, valveChartHeight);
+                float mainPlotLeftAxisSize = mainPlot.RenderManager.LastRender.Layout.LeftPanel.Width;
+                float valvePlotLeftAxisSize = valvePlot.RenderManager.LastRender.Layout.LeftPanel.Width;
+                float maxLeftAxisSize = Math.Max(mainPlotLeftAxisSize, valvePlotLeftAxisSize);
+                mainPlot.Axes.Left.MinimumSize = maxLeftAxisSize;
+                valvePlot.Axes.Left.MinimumSize = maxLeftAxisSize;
 
                 using var bitmap = new SKBitmap(width, totalHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
                 using var canvas = new SKCanvas(bitmap);
