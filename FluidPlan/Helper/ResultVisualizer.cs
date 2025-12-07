@@ -1,4 +1,5 @@
 using ScottPlot;
+using SkiaSharp;
 //using ImageMagick; // Required for GIF creation
 
 namespace FluidSimu
@@ -22,32 +23,80 @@ namespace FluidSimu
 
         private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
         {
-            var plt = new Plot();
+            const int width = 1200;
+            const int mainChartHeight = 600;
 
-            // Setup basic style
-            plt.Title("Pressure Distribution");
-            plt.XLabel("Time [s]");
-            plt.YLabel("Pressure [bar]");
-            plt.ShowLegend();
+            var visibleValves = model.Elements
+                .Where(e => e.Visible && e.Type.Equals("valve", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            // Create a lookup for visibility
-            var visibilityLookup = model.Elements
-                                        .ToDictionary(e => e.Name, e => e.Visible);
+            var visiblePressureElements = model.Elements
+                .Where(e => e.Visible && !e.Type.Equals("valve", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            // Add a line for each VISIBLE element
-            foreach (var series in data.Series)
+            var mainPlot = new Plot();
+            mainPlot.Title("Pressure Distribution");
+            mainPlot.YLabel("Pressure [bar]");
+            mainPlot.ShowLegend();
+
+            foreach (var element in visiblePressureElements)
             {
-                // Only plot if the element is marked as visible in the model JSON
-                if (visibilityLookup.TryGetValue(series.Key, out bool isVisible) && isVisible)
+                if (data.Series.TryGetValue(element.Name, out var series))
                 {
-                    var sp = plt.Add.Scatter(data.Time, series.Value);
-                    sp.LegendText = series.Key;
+                    var sp = mainPlot.Add.Scatter(data.Time, series);
+                    sp.LegendText = element.Name;
                     sp.LineWidth = 2;
                 }
             }
 
-            // Save
-            plt.SavePng(outputPath, 1200, 800);
+            if (!visibleValves.Any())
+            {
+                mainPlot.XLabel("Time [s]");
+                mainPlot.SavePng(outputPath, width, mainChartHeight);
+            }
+            else
+            {
+                int valveChartHeight = Math.Max(100, visibleValves.Count * 40 + 60); // Base height + per-valve height
+                int totalHeight = mainChartHeight + valveChartHeight;
+
+                var valvePlot = new Plot();
+                valvePlot.XLabel("Time [s]");
+
+                var valveLabels = new List<Tick>();
+                for (int i = 0; i < visibleValves.Count; i++)
+                {
+                    var valve = visibleValves[i];
+                    if (data.Series.TryGetValue(valve.Name, out var series))
+                    {
+                        double yOffset = i * 1.5;
+                        var valveState = series.Select(s => s > 0.5 ? yOffset + 1.0 : yOffset).ToArray();
+                        var sp = valvePlot.Add.Scatter(data.Time, valveState);
+                        sp.LineWidth = 2;
+                    }
+                    valveLabels.Add(new Tick(i * 1.5 + 0.5, visibleValves[i].Name));
+                }
+
+                valvePlot.Axes.Left.TickGenerator = new ScottPlot.TickGenerators.NumericManual(valveLabels.ToArray());
+                valvePlot.Axes.Left.MajorTickStyle.Length = 0;
+                valvePlot.Axes.SetLimitsY(-1, visibleValves.Count * 1.5);
+
+                mainPlot.Axes.Bottom.TickLabelStyle.IsVisible = false;
+
+                using var bitmap = new SKBitmap(width, totalHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+                using var canvas = new SKCanvas(bitmap);
+                canvas.Clear(SKColors.White);
+
+                using var mainBitmap = mainPlot.GetBitmap(width, mainChartHeight);
+                canvas.DrawBitmap(mainBitmap, 0, 0);
+
+                using var valveBitmap = valvePlot.GetBitmap(width, valveChartHeight);
+                canvas.DrawBitmap(valveBitmap, 0, mainChartHeight);
+
+                using var image = SKImage.FromBitmap(bitmap);
+                using var stream = File.OpenWrite(outputPath);
+                image.Encode(SKEncodedImageFormat.Png, 80).SaveTo(stream);
+            }
+
             Console.WriteLine($"Saved: {outputPath}");
         }
 
