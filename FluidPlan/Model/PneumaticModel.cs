@@ -121,13 +121,26 @@ namespace FluidSimu
             }
             // --- END: NEW VALIDATION LOGIC ---
 
+            // Expand shorthand connections and perform specific validation
+            var expandedConnections = ExpandAndValidateConnections(dto.Connections, out var connectionErrors);
+            if (connectionErrors.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("FATAL: Invalid format in 'connections'. Halting execution.");
+                foreach (var error in connectionErrors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+                Console.ResetColor();
+                throw new InvalidOperationException("Connection configuration is invalid.");
+            }
 
             num = 0;
-            foreach (string nls in dto.Connections)
+            foreach (string nls in expandedConnections)
             {
-                if (nls.Contains('>')) // Check for directional connection
+                if (nls.Contains("=>")) // Check for directional connection
                 {
-                    string[] parts = nls.Split('>', StringSplitOptions.TrimEntries);
+                    string[] parts = nls.Split(new[] { "=>" }, StringSplitOptions.TrimEntries);
                     if (parts.Length != 2) continue;
 
                     var inlet = model._elements.FirstOrDefault(e => e.Name.Equals(parts[0]));
@@ -221,6 +234,87 @@ namespace FluidSimu
             }
 
             return model;
+        }
+        private static List<string> ExpandAndValidateConnections(List<string> rawConnections, out List<string> errors)
+        {
+            var expandedConnections = new List<string>();
+            errors = new List<string>();
+
+            foreach (var connectionStr in rawConnections)
+            {
+                if (string.IsNullOrWhiteSpace(connectionStr))
+                {
+                    continue;
+                }
+
+                // Case 1: Check Valve Connection (e.g., "A => B")
+                if (connectionStr.Contains("=>"))
+                {
+                    if (connectionStr.Contains(',') || connectionStr.Contains(':'))
+                    {
+                        errors.Add($"Invalid connection string \"{connectionStr}\": Check valve operator '=>' cannot be mixed with hub ':' or chain ',' shorthand.");
+                        continue;
+                    }
+                    var parts = connectionStr.Split(new[] { "=>" }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
+                    if (parts.Length != 2)
+                    {
+                        errors.Add($"Invalid check valve format in \"{connectionStr}\": Must be 'Element1 => Element2'.");
+                        continue;
+                    }
+                    expandedConnections.Add(string.Join(" => ", parts));
+                }
+                // Case 2: Hub Connection (e.g., "A: B, C")
+                else if (connectionStr.Contains(':'))
+                {
+                    var hubParts = connectionStr.Split(':').Select(p => p.Trim()).ToArray();
+                    if (hubParts.Length != 2 || string.IsNullOrWhiteSpace(hubParts[0]) || string.IsNullOrWhiteSpace(hubParts[1]))
+                    {
+                        errors.Add($"Invalid hub format in \"{connectionStr}\": Must be 'Hub: Spoke1, Spoke2, ...'.");
+                        continue;
+                    }
+
+                    var hub = hubParts[0];
+                    if (hub.Contains(','))
+                    {
+                        errors.Add($"Invalid hub format in \"{connectionStr}\": Only one element can be the hub (left of ':').");
+                        continue;
+                    }
+
+                    var spokes = hubParts[1].Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    if (spokes.Length < 1)
+                    {
+                        errors.Add($"Invalid hub format in \"{connectionStr}\": Hub must connect to at least one spoke.");
+                        continue;
+                    }
+
+                    foreach (var spoke in spokes)
+                    {
+                        expandedConnections.Add($"{hub},{spoke}");
+                    }
+                }
+                // Case 3: Chain or Simple Connection (e.g., "A, B, C")
+                else if (connectionStr.Contains(','))
+                {
+                    var elements = connectionStr.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    if (elements.Length < 2)
+                    {
+                        errors.Add($"Invalid chain format in \"{connectionStr}\": Must contain at least two elements.");
+                        continue;
+                    }
+
+                    for (int i = 0; i < elements.Length - 1; i++)
+                    {
+                        expandedConnections.Add($"{elements[i]},{elements[i + 1]}");
+                    }
+                }
+                // Case 4: Invalid format
+                else
+                {
+                    errors.Add($"Invalid connection string \"{connectionStr}\": Must be a pair ('A, B'), chain ('A, B, C'), hub ('A: B, C'), or check valve ('A => B').");
+                }
+            }
+
+            return expandedConnections;
         }
         public void AddCharge(ChargeData x)
         {
