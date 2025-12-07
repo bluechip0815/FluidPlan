@@ -69,14 +69,29 @@ namespace FluidSimu
 
             // --- START: NEW VALIDATION LOGIC ---
             Console.WriteLine("\nValidating model integrity...");
+
+            // Step 1: Expand shorthand connections first. This also validates format.
+            var expandedConnections = ExpandAndValidateConnections(dto.Connections, out var connectionErrors);
+            if (connectionErrors.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("FATAL: Invalid format in 'connections'. Halting execution.");
+                foreach (var error in connectionErrors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+                Console.ResetColor();
+                throw new InvalidOperationException("Connection configuration is invalid.");
+            }
+
+            // Step 2: Validate that all elements used in the *expanded* connections are defined.
             var definedElementNames = new HashSet<string>(model._elements.Select(e => e.Name));
             var usedInConnectionNames = new HashSet<string>();
             var errors = new List<string>();
 
-            // 1. Check if elements used in connections are actually defined.
-            foreach (var connectionStr in dto.Connections)
+            foreach (var connectionStr in expandedConnections)
             {
-                var namesInConnection = connectionStr.Split(new[] { ',', '>' }, StringSplitOptions.RemoveEmptyEntries)
+                var namesInConnection = connectionStr.Split(new[] { ',', '=', '>' }, StringSplitOptions.RemoveEmptyEntries)
                                                      .Select(name => name.Trim());
                 foreach (var name in namesInConnection)
                 {
@@ -85,17 +100,17 @@ namespace FluidSimu
                     usedInConnectionNames.Add(name); // Track all used elements
                     if (!definedElementNames.Contains(name))
                     {
-                        errors.Add($"Element '{name}' used in connection \"{connectionStr}\" is not defined in the 'elements' list.");
+                        errors.Add($"Element '{name}' used in connection is not defined in the 'elements' list.");
                     }
                 }
             }
-
             // If there are any errors, report them and stop execution.
             if (errors.Any())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("FATAL: Model validation failed. Halting execution.");
-                foreach (var error in errors)
+                // Use a HashSet to only show unique error messages
+                foreach (var error in errors.Distinct())
                 {
                     Console.WriteLine($"  - {error}");
                 }
@@ -103,7 +118,8 @@ namespace FluidSimu
                 throw new InvalidOperationException("Model configuration is invalid. Please check the JSON file.");
             }
 
-            // 2. Check for defined elements that are never used in any connection.
+
+            // Step 3. Check for defined elements that are never used in any connection.
             var unusedElementNames = definedElementNames.Except(usedInConnectionNames);
             if (unusedElementNames.Any())
             {
@@ -120,20 +136,6 @@ namespace FluidSimu
                 Console.WriteLine("Model validation successful: All elements are defined and used.");
             }
             // --- END: NEW VALIDATION LOGIC ---
-
-            // Expand shorthand connections and perform specific validation
-            var expandedConnections = ExpandAndValidateConnections(dto.Connections, out var connectionErrors);
-            if (connectionErrors.Any())
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("FATAL: Invalid format in 'connections'. Halting execution.");
-                foreach (var error in connectionErrors)
-                {
-                    Console.WriteLine($"  - {error}");
-                }
-                Console.ResetColor();
-                throw new InvalidOperationException("Connection configuration is invalid.");
-            }
 
             num = 0;
             foreach (string nls in expandedConnections)
