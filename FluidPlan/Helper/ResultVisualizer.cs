@@ -1,6 +1,5 @@
 using ScottPlot;
 using SkiaSharp;
-//using ImageMagick; // Required for GIF creation
 
 namespace FluidSimu
 {
@@ -11,14 +10,8 @@ namespace FluidSimu
             Console.WriteLine("Reading results...");
             var data = ReadCsv(csvPath);
 
-            
-            // 1. Create Static Image (The whole history)
             Console.WriteLine("Generating static chart...");
             CreateStaticImage(data, outputFileName, model);
-
-            // 2. Create Animated GIF (Replay)
-            //Console.WriteLine("Generating animated GIF (this may take time)...");
-            //CreateAnimatedGif(data, Path.Combine(outputFolder, "simulation_replay.gif"));
         }
 
         private static void CreateStaticImage(SimulationData data, string outputPath, SimulationModelDto model)
@@ -87,11 +80,11 @@ namespace FluidSimu
                 // Render plots to measure axis sizes
                 _ = mainPlot.GetImageBytes(width, mainChartHeight);
                 _ = valvePlot.GetImageBytes(width, valveChartHeight);
-                float mainPlotLeftAxisSize = mainPlot.RenderManager.LastRender.Layout.LeftPanel.Width;
-                float valvePlotLeftAxisSize = valvePlot.RenderManager.LastRender.Layout.LeftPanel.Width;
-                float maxLeftAxisSize = Math.Max(mainPlotLeftAxisSize, valvePlotLeftAxisSize);
-                mainPlot.Axes.Left.MinimumSize = maxLeftAxisSize;
-                valvePlot.Axes.Left.MinimumSize = maxLeftAxisSize;
+                float mainPlotLeftAxisSize = mainPlot.RenderManager.LastRender.Layout.DataRect.Width;
+                float valvePlotLeftAxisSize = valvePlot.RenderManager.LastRender.Layout.DataRect.Width;
+                float maxLeftAxisSize = Math.Min(mainPlotLeftAxisSize, valvePlotLeftAxisSize);
+                mainPlot.Axes.Left.MinimumSize = width-maxLeftAxisSize;
+                valvePlot.Axes.Left.MinimumSize = width-maxLeftAxisSize;
 
                 using var bitmap = new SKBitmap(width, totalHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
                 using var canvas = new SKCanvas(bitmap);
@@ -111,59 +104,6 @@ namespace FluidSimu
             Console.WriteLine($"Saved: {outputPath}");
         }
 
-        //private static void CreateAnimatedGif(SimulationData data, string outputPath)
-        //{
-        //    // Settings
-        //    int width = 800;
-        //    int height = 600;
-        //    int fps = 20; 
-        //    int skipSteps = 10; // Don't render every single 0.1ms step, it's too slow.
-            
-        //    using (var collection = new MagickImageCollection())
-        //    {
-        //        // We create a "Moving Window" or "Progress Line" effect
-        //        for (int i = 0; i < data.Time.Count; i += skipSteps)
-        //        {
-        //            var plt = new Plot();
-        //            plt.Title($"Simulation T = {data.Time[i]:F2} s");
-        //            plt.XLabel("Time [s]");
-        //            plt.YLabel("Pressure [bar]");
-
-        //            // Fix Axis limits so the chart doesn't jump around
-        //            plt.Axes.SetLimits(0, data.Time.Last(), 0, 7.0); // Assuming 0-7 bar range
-
-        //            // Draw the lines up to the current point 'i'
-        //            foreach (var element in data.Series)
-        //            {
-        //                // Take subset of data
-        //                double[] currentYs = element.Value.Take(i + 1).ToArray();
-        //                double[] currentXs = data.Time.Take(i + 1).ToArray();
-
-        //                var sp = plt.Add.Scatter(currentXs, currentYs);
-        //                sp.LegendText = element.Key;
-        //                sp.LineWidth = 2;
-        //            }
-
-        //            // Render frame to memory
-        //            byte[] bytes = plt.GetImageBytes(width, height, ImageFormat.Png);
-        //            var image = new MagickImage(bytes);
-                    
-        //            // Set delay for this frame (100 / fps)
-        //            image.AnimationDelay = 100 / fps; 
-        //            collection.Add(image);
-
-        //            if (i % 50 == 0) Console.Write(".");
-        //        }
-
-        //        // Optimize and Save
-        //        Console.WriteLine("\nEncoding GIF...");
-        //        collection.Optimize();
-        //        collection.Write(outputPath);
-        //    }
-        //    Console.WriteLine($"Saved: {outputPath}");
-        //}
-
-        // --- Helper to parse CSV ---
         private static SimulationData ReadCsv(string path)
         {
             var lines = File.ReadAllLines(path);

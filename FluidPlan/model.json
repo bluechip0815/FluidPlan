@@ -67,6 +67,7 @@
     {
       "name": "V1",
       "type": "Valve",
+  	  "visible" : true,
       "description": "Befüllen T1",
       "flowCoefficient": 1.5,
 	  "parameters": {
@@ -77,6 +78,7 @@
     {
       "name": "V2",
       "type": "Valve",
+  	  "visible" : true,
       "description": "Ablassen über EPU",
 	  "parameters": {
         "pressure": "0.0",
