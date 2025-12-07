@@ -43,8 +43,8 @@ namespace FluidSimu
             {
                 if (data.Series.TryGetValue(element.Name, out var series))
                 {
-                    var sp = mainPlot.Add.Scatter(data.Time, series);
-                    sp.LegendText = element.Name;
+                    var sp = mainPlot.Add.Scatter(data.Time.ToArray(), series.ToArray());
+                    sp.Label = element.Name;
                     sp.LineWidth = 2;
                 }
             }
@@ -70,7 +70,7 @@ namespace FluidSimu
                     {
                         double yOffset = i * 1.5;
                         var valveState = series.Select(s => s > 0.5 ? yOffset + 1.0 : yOffset).ToArray();
-                        var sp = valvePlot.Add.Scatter(data.Time, valveState);
+                        var sp = valvePlot.Add.Scatter(data.Time.ToArray(), valveState);
                         sp.LineWidth = 2;
                     }
                     valveLabels.Add(new Tick(i * 1.5 + 0.5, visibleValves[i].Name));
@@ -86,10 +86,10 @@ namespace FluidSimu
                 using var canvas = new SKCanvas(bitmap);
                 canvas.Clear(SKColors.White);
 
-                using var mainBitmap = mainPlot.GetBitmap(width, mainChartHeight);
+                using var mainBitmap = SKBitmap.Decode(mainPlot.GetImageBytes(width, mainChartHeight));
                 canvas.DrawBitmap(mainBitmap, 0, 0);
 
-                using var valveBitmap = valvePlot.GetBitmap(width, valveChartHeight);
+                using var valveBitmap = SKBitmap.Decode(valvePlot.GetImageBytes(width, valveChartHeight));
                 canvas.DrawBitmap(valveBitmap, 0, mainChartHeight);
 
                 using var image = SKImage.FromBitmap(bitmap);
