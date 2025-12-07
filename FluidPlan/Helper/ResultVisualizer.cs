@@ -80,6 +80,9 @@ namespace FluidSimu
                 valvePlot.Axes.Left.MajorTickStyle.Length = 0;
                 valvePlot.Axes.SetLimitsY(-1, visibleValves.Count * 1.5);
 
+                // Align X axes
+                valvePlot.Axes.SetLimitsX(mainPlot.Axes.GetLimits());
+
                 mainPlot.Axes.Bottom.TickLabelStyle.IsVisible = false;
 
                 using var bitmap = new SKBitmap(width, totalHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
