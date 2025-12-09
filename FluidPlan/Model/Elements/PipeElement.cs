@@ -18,13 +18,13 @@ namespace FluidSimu
             ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
 
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
             // --- START: IMPROVED FLOW LOGIC ---
             // The effective area for flow is the SMALLER of the two connecting ports.
             // This correctly models that the tightest restriction dictates the flow rate.
 
-            double pFrom = otherNode.Pressure;
+            double pFrom = otherNode!.Pressure;
             double pTo = Pressure;
 
             double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);

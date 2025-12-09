@@ -18,9 +18,9 @@ namespace FluidSimu
             KvFactor = ParameterHelper.GetDouble(dto, "kv", 1.0);
             ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
-            double pFrom = otherNode.Pressure;
+            double pFrom = otherNode!.Pressure;
             double pTo = Pressure;
 
             double effectiveArea = Area * KvFactor;

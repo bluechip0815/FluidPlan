@@ -19,11 +19,11 @@ namespace FluidSimu
         }
 
         // DoStep logic is identical to PipeElement's new logic.
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
 
             double pFrom = this.Pressure;
-            double pTo = otherNode.Pressure;
+            double pTo = otherNode!.Pressure;
             // Calculate the volume flow based on the pressure difference.
             double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;

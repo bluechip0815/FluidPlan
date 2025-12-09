@@ -57,7 +57,7 @@ namespace FluidSimu
             }
             Connections[connectorName] = connectedElement;
         }
-        public void CalcFlow(PneumaticModel model)
+        public virtual void CalcFlow(PneumaticModel model)
         {
             foreach (var connection in Connections)
             {
@@ -78,7 +78,7 @@ namespace FluidSimu
             }
         }
 
-        protected abstract void DoStep(PneumaticModel model, IPneumaticElement oherNode);
+        protected abstract void DoStep(PneumaticModel model, IPneumaticElement? oherNode=null);
         public void Reset()
         {
             LastQ = 0;

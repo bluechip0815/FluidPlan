@@ -76,10 +76,10 @@ namespace FluidSimu
             }
             return target;
         }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
             double pFrom = this.Pressure;
-            double pTo = otherNode.Pressure;
+            double pTo = otherNode!.Pressure;
 
             // Calculate flow through our connection port.
             double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient, LastFlow, model.DeltaT);

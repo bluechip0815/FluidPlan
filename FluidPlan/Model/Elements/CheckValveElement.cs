@@ -15,13 +15,13 @@ namespace FluidSimu
 
         public override void CalcFlow(PneumaticModel model)
         {
-            DoStep(model, null); // Call DoStep just once.
+            DoStep(model); // Call DoStep just once.
         }
         public override double CalcPressure(PneumaticModel model)
         {
             return 0.0;
         }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? _=null)
         {
             // A check valve must have both an inlet ("1") and an outlet ("2") to function.
             if (!Connections.TryGetValue("1", out var inlet) || !Connections.TryGetValue("2", out var outlet))

@@ -62,7 +62,7 @@ namespace FluidSimu
             List<IPneumaticElement> lst = new() { _nodes[0] };
             for (int idx = 1; idx < _nodes.Count; idx++)
             {
-                _nodes[idx].CalcFlow(model, lst, 0);
+                _nodes[idx].CalcFlow(model/*, lst, 0*/);
             }
         }
         // In Connector.cs
@@ -74,7 +74,7 @@ namespace FluidSimu
             {
                 // Das aktuelle Element `_nodes[i]` wird seine Strömung mit allen
                 // nachfolgenden Elementen in der Liste berechnen.
-                _nodes[i].CalcFlow(model, _nodes, i + 1);
+                _nodes[i].CalcFlow(model/*, _nodes, i + 1*/);
             }
         }
     }

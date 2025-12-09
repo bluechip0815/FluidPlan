@@ -107,9 +107,9 @@ namespace FluidSimu
         public override void CalcFlow(PneumaticModel model)
         {
             // Call DoStep just once. The `otherNode` parameter is not used in the new logic.
-            DoStep(model, null);
+            DoStep(model);
         }
-        protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
+        protected override void DoStep(PneumaticModel model, IPneumaticElement? _=null)
         {
             if (!Connections.TryGetValue("1", out var element1) || !Connections.TryGetValue("2", out var element2))
             {
