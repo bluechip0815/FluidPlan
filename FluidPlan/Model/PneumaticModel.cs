@@ -170,11 +170,7 @@ namespace FluidSimu
 
                     foreach (var (element, port) in elementsAndPorts)
                     {
-                        if (port > 0 && port <= element.Ports.Count)
-                        {
-                            element.Ports[port - 1].Connect(connector);
-                        }
-                        else
+                        if (port <= 0 || port > element.Ports.Count)
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
                             Console.WriteLine($"WARNING: Invalid port '{port}' specified for element '{element.Name}'. Check your model.json.");

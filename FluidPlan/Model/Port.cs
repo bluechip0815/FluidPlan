@@ -12,7 +12,7 @@ namespace FluidSimu
         /// </summary>
         public double Area { get; }
 
-        public Port(double diameter)
+        public Port(double diameter=0)
         {
             if (diameter <= 0)
             {

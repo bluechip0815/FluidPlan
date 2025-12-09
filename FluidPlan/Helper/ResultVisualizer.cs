@@ -37,7 +37,7 @@ namespace FluidSimu
                 if (data.Series.TryGetValue(element.Name, out var series))
                 {
                     var sp = mainPlot.Add.Scatter(data.Time.ToArray(), series.ToArray());
-                    sp.Label = element.Name;
+                    sp.LegendText = element.Name;
                     sp.LineWidth = 2;
                 }
             }
