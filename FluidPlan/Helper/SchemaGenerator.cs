@@ -92,22 +92,17 @@ namespace FluidSimu
             }
 
             // Define the connections (edges)
-            foreach (var connection in model.Connections)
+            foreach (var connectionList in model.Connections.Values)
             {
-                string processedEdge;
-                if (connection.Contains('>'))
+                // Extract only the element names (e.g., "R1" from "R1.1"), preserving order but removing duplicates for clarity.
+                var elementNames = connectionList.Select(c => c.Split('.')[0].Trim()).Distinct();
+
+                // Create a single edge chain, e.g., "Supply -> R1" or "R1 -> V1 -> EPU"
+                if (elementNames.Count() > 1)
                 {
-                    // For directional connections like "R2 > CV1"
-                    var parts = connection.Split('>').Select(p => p.Trim());
-                    processedEdge = $"{string.Join(" -> ", parts)}";
+                    string processedEdge = string.Join(" -> ", elementNames);
+                    dotBuilder.AppendLine($"    {processedEdge};");
                 }
-                else
-                {
-                    // For non-directional connections like "R1, Supply"
-                    var parts = connection.Split(',').Select(p => p.Trim());
-                    processedEdge = $"{string.Join(" -> ", parts)}";
-                }
-                dotBuilder.AppendLine($"    {processedEdge};");
             }
 
             dotBuilder.AppendLine("}");
