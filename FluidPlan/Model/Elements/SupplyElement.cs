@@ -3,6 +3,7 @@ namespace FluidSimu
     public class SupplyElement : BaseElement
     {
         private double Area = 0.0;
+        public override List<Port> Ports { get; } = new List<Port> { new Port() };
         public SupplyElement(ElementDto dto, int num, bool Exhaust) : base(dto, num)
         {
             Type = Exhaust ? PneumaticType.exhaust : PneumaticType.supply;

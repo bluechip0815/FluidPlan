@@ -8,7 +8,8 @@ namespace FluidSimu
         PneumaticType Type { get; }
         double Pressure { get; }
         bool IsVisible { get; }
-        string ToString(); 
+        List<Port> Ports { get; } // Add this line
+        string ToString();
         void CalcFlow(PneumaticModel model, List<IPneumaticElement> elements, int startIndex);
         double CalcPressure(PneumaticModel model);
     }
@@ -20,6 +21,7 @@ namespace FluidSimu
         public string Comment { get; protected set; }
         public string Description { get; protected set; }
         public double Volume { get; protected set; } = 0;
+        public abstract List<Port> Ports { get; } // Add this line
         // Internal pressure
         public double Pressure { get; protected set; } = 0;
         public double LastQ { get; protected set; } = 0;

@@ -30,6 +30,7 @@ namespace FluidSimu
         public IReadOnlyList<IPneumaticElement> Neighbors => _neighbors;
         private PropValvePT1 _pt1Model { get; set; } = new();
         private PropValvePT2 _pt2Model { get; set; } = new();
+        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public EpuElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.epu;

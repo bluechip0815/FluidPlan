@@ -5,6 +5,7 @@ namespace FluidSimu
     {
         private readonly double KvFactor;
         private readonly double Area;
+        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public ThrottleElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.throttle;

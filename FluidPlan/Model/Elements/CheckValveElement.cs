@@ -13,7 +13,7 @@ namespace FluidSimu
 
         private IPneumaticElement? _inlet;
         private readonly List<IPneumaticElement> _neighbors = new();
-
+        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public CheckValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.checkvalve;

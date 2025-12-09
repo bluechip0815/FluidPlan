@@ -12,6 +12,7 @@ namespace FluidSimu
         private double _lastStateChangeTime = -1.0;
         // The actual, current opening percentage of the valve (0.0 to 1.0).
         private double _currentOpeningFactor = 0.0;
+        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public ValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.valve;

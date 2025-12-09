@@ -5,7 +5,7 @@ namespace FluidSimu
     {
         //private readonly double Roughness = 1.0;
         private readonly double Area = 0.0;
-
+        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public PipeElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.pipe;

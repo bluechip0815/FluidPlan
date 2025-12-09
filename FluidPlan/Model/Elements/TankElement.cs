@@ -3,6 +3,7 @@ namespace FluidSimu
     public class TankElement : BaseElement
     {
         private readonly double Area = 0.0;
+        public override List<Port> Ports { get; } = new List<Port> { new Port() };
         public TankElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.tank;
