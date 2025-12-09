@@ -8,7 +8,7 @@ namespace FluidSimu
         PneumaticType Type { get; }
         double Pressure { get; }
         bool IsVisible { get; }
-        List<Port> Ports { get; } // Add this line
+        double Diameter { get; }
         string ToString();
         void CalcFlow(PneumaticModel model, List<IPneumaticElement> elements, int startIndex);
         double CalcPressure(PneumaticModel model);
@@ -21,7 +21,7 @@ namespace FluidSimu
         public string Comment { get; protected set; }
         public string Description { get; protected set; }
         public double Volume { get; protected set; } = 0;
-        public abstract List<Port> Ports { get; } // Add this line
+        public double Diameter { get; protected set; }
         // Internal pressure
         public double Pressure { get; protected set; } = 0;
         public double LastQ { get; protected set; } = 0;
@@ -38,6 +38,7 @@ namespace FluidSimu
             Comment = dto.Comment ?? "";
             Description = dto.Description ?? "";
             IsVisible = ParameterHelper.GetBool(dto, "visible", false);
+            Diameter = ParameterHelper.GetDouble(dto, "diameter", 0.01);
             // Initialize with a default zero-flow port. Derived classes must override this.
             IsVisible = dto.Visible;
             FlowCoefficient = dto.FlowCoefficient;

@@ -3,7 +3,6 @@ namespace FluidSimu
     public class TankElement : BaseElement
     {
         private readonly double Area = 0.0;
-        public override List<Port> Ports { get; } = new List<Port> { new Port() };
         public TankElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.tank;
@@ -11,22 +10,18 @@ namespace FluidSimu
             Volume = ParameterHelper.GetVolume(dto);
 
             // A tank now has a specific port diameter for its connection.
-            double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
-            if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
-
-            Area = Math.PI / 4 * portDiameter * portDiameter;
+            Area = Math.PI / 4 * Diameter * Diameter;
         }
 
         // DoStep logic is identical to PipeElement's new logic.
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            double pFrom = Pressure;
-            double pTo = otherNode.Pressure;
-
             // Volumenstrom [m³/s], positiv von From -> To
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
+            var effectiveDiameter = Math.Min(Diameter, otherNode.Diameter);
+            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(Pressure, otherNode.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;
-            double pMean = 0.5 * (pFrom + pTo);
+            double pMean = 0.5 * (Pressure + otherNode.Pressure);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double CurrentQ = qCharge * model.DeltaT;
 

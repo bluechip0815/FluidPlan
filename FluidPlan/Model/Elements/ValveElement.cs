@@ -12,12 +12,9 @@ namespace FluidSimu
         private double _lastStateChangeTime = -1.0;
         // The actual, current opening percentage of the valve (0.0 to 1.0).
         private double _currentOpeningFactor = 0.0;
-        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public ValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.valve;
-
-            Diameter = ParameterHelper.GetDiameter(dto);
             SwtichingTime = ParameterHelper.GetDouble(dto, "ValveSwitchingTime", 0);
 
             Area = Math.PI / 4 * Diameter * Diameter;
@@ -134,21 +131,18 @@ namespace FluidSimu
             }
 
             // 3. Calculate Flow between element1 and element2
-            double p1 = element1.Pressure;
-            double p2 = element2.Pressure;
-
             // Use the Area * Opening
-            double effectiveArea = Area * opening;
-
             // Calculate flow: q is positive if p1 > p2, negative if p2 > p1
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(p1, p2, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
+            var effectiveDiameter = Math.Min(element1.Diameter, element2.Diameter);
+            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2) * opening;
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(element1.Pressure, element2.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;
 
             // If q is positive, flow is from element1 to element2.
             // If q is negative, flow is from element2 to element1.
 
             // 4. Calculate Charge Transfer
-            double pMean = 0.5 * (p1 + p2);
+            double pMean = 0.5 * (element1.Pressure + element2.Pressure);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(Math.Abs(q), pMean); // Use absolute value of q for charge amount
 
             double currentChargeTransfer = qCharge * model.DeltaT;

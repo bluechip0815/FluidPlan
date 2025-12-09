@@ -13,12 +13,10 @@ namespace FluidSimu
 
         private IPneumaticElement? _inlet;
         private readonly List<IPneumaticElement> _neighbors = new();
-        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public CheckValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.checkvalve;
-            double diameter = ParameterHelper.GetDiameter(dto);
-            Area = Math.PI / 4 * diameter * diameter;
+            Area = Math.PI / 4 * Diameter * Diameter;
             _openingDeltaP = ParameterHelper.GetDouble(dto, "openingdeltap", 0.0);
         }
         // --- Neighbor management methods ---
@@ -66,9 +64,11 @@ namespace FluidSimu
             }
 
             // If open, calculate flow between INLET and OUTLET
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, Area, FlowCoefficient, LastFlow, model.DeltaT);
+            var effectiveDiameter = Math.Min(_inlet.Diameter, outlet.Diameter);
+            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(_inlet.Pressure, outlet.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;
-            double pMean = 0.5 * (pFrom + pTo);
+            double pMean = 0.5 * (_inlet.Pressure + outlet.Pressure);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;
 

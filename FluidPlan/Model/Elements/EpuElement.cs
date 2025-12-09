@@ -30,17 +30,12 @@ namespace FluidSimu
         public IReadOnlyList<IPneumaticElement> Neighbors => _neighbors;
         private PropValvePT1 _pt1Model { get; set; } = new();
         private PropValvePT2 _pt2Model { get; set; } = new();
-        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public EpuElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.epu;
 
             // An EPU now has a specific port diameter for its connection.
-            double portDiameter = ParameterHelper.GetDiameter(dto, "portDiameter");
-            if (portDiameter == 0.0) portDiameter = ParameterHelper.GetDiameter(dto, "diameter");
-            if (portDiameter == 0.0) portDiameter = 0.02; // Sane default
-
-            Area = Math.PI / 4 * portDiameter * portDiameter;
+            Area = Math.PI / 4 * Diameter * Diameter;
 
             Pressure = ParameterHelper.GetPressure(dto);
 
@@ -85,13 +80,12 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            double pFrom = this.Pressure;
-            double pTo = otherNode.Pressure;
-
             // Calculate flow through our connection port.
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, this.Area, FlowCoefficient, LastFlow, model.DeltaT);
+            var effectiveDiameter = Math.Min(Diameter, otherNode.Diameter);
+            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2);
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(Pressure, otherNode.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;
-            double pMean = 0.5 * (pFrom + pTo);
+            double pMean = 0.5 * (Pressure + otherNode.Pressure);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double currentQ = qCharge * model.DeltaT;
 

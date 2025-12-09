@@ -5,29 +5,24 @@ namespace FluidSimu
     {
         private readonly double KvFactor;
         private readonly double Area;
-        public override List<Port> Ports { get; } = new List<Port> { new Port(), new Port() };
         public ThrottleElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.throttle;
 
             Pressure = ParameterHelper.GetPressure(dto);
-            double diameter = ParameterHelper.GetDiameter(dto);
 
-            Area = Math.PI / 4 * diameter * diameter;
+            Area = Math.PI / 4 * Diameter * Diameter;
 
             // z.B. ein Drossel-Koeffizient (0..1 oder größer)
             KvFactor = ParameterHelper.GetDouble(dto, "kv", 1.0);
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            double pFrom = otherNode.Pressure;
-            double pTo = Pressure;
-
-            double effectiveArea = Area * KvFactor;
-
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(pFrom, pTo, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
+            var effectiveDiameter = Math.Min(Diameter, otherNode.Diameter);
+            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2) * KvFactor;
+            double q = FlowPhysics.ComputeSmoothedVolumeFlow(otherNode.Pressure, Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
             LastFlow = q;
-            double pMean = 0.5 * (pFrom + pTo);
+            double pMean = 0.5 * (otherNode.Pressure + Pressure);
             double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
             double CurrentQ = qCharge * model.DeltaT;
 
