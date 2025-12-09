@@ -12,6 +12,6 @@ namespace FluidSimu
         [JsonPropertyName("elements")]
         public List<ElementDto> Elements { get; set; } = new();
         [JsonPropertyName("connections")]
-        public List<string> Connections { get; set; } = new();
+        public Dictionary<string, List<string>> Connections { get; set; } = new();
     }
 }

@@ -41,14 +41,7 @@ namespace FluidSimu
         }
         public string Info()
         {
-            string n = "";
-            foreach (var o in _nodes)
-            {
-                if (n != "")
-                    n += "; ";
-                n += $"{o.Id} ({o.Name})";
-            }
-            return n;
+            return string.Join(", ", _nodes.Select(e => e.Name));
         }
         internal void CalcFlow(PneumaticModel model)
         {

@@ -74,18 +74,26 @@ namespace FluidSimu
             var errors = new List<string>();
 
             // 1. Check if elements used in connections are actually defined.
-            foreach (var connectionStr in dto.Connections)
+            foreach (var connectionEntry in dto.Connections)
             {
-                var namesInConnection = connectionStr.Split(new[] { ',', '>' }, StringSplitOptions.RemoveEmptyEntries)
-                                                     .Select(name => name.Trim());
+                var connectionId = connectionEntry.Key;
+                var namesInConnection = connectionEntry.Value;
+
+                if (namesInConnection == null || !namesInConnection.Any())
+                {
+                    errors.Add($"Connector '{connectionId}' is empty.");
+                    continue;
+                }
+
                 foreach (var name in namesInConnection)
                 {
                     if (string.IsNullOrWhiteSpace(name)) continue;
 
-                    usedInConnectionNames.Add(name); // Track all used elements
-                    if (!definedElementNames.Contains(name))
+                    var elementName = name.Split('.')[0]; // Handle "V1.1" format
+                    usedInConnectionNames.Add(elementName); // Track all used elements
+                    if (!definedElementNames.Contains(elementName))
                     {
-                        errors.Add($"Element '{name}' used in connection \"{connectionStr}\" is not defined in the 'elements' list.");
+                        errors.Add($"Element '{elementName}' used in connection '{connectionId}' is not defined in the 'elements' list.");
                     }
                 }
             }
@@ -122,47 +130,56 @@ namespace FluidSimu
             // --- END: NEW VALIDATION LOGIC ---
 
 
-            num = 0;
-            foreach (string nls in dto.Connections)
+            foreach (var connectionPair in dto.Connections)
             {
-                if (nls.Contains('>')) // Check for directional connection
+                if (!int.TryParse(connectionPair.Key, out int connectionId))
                 {
-                    string[] parts = nls.Split('>', StringSplitOptions.TrimEntries);
-                    if (parts.Length != 2) continue;
+                    // Handle cases where the key is not a valid integer, if necessary
+                    Console.WriteLine($"Warning: Could not parse connection ID '{connectionPair.Key}'. Skipping.");
+                    continue;
+                }
 
-                    var inlet = model._elements.FirstOrDefault(e => e.Name.Equals(parts[0]));
-                    var directionalElement = model._elements.FirstOrDefault(e => e.Name.Equals(parts[1]));
+                var elementsForConnector = new List<IPneumaticElement>();
+                var elementsAndPorts = new List<(IPneumaticElement element, int port)>();
 
-                    if (inlet != null && directionalElement is IDirectionalElement cv)
+                foreach (var connectionString in connectionPair.Value)
+                {
+                    var parts = connectionString.Split('.');
+                    var elementName = parts[0];
+                    int portNumber = 1; // Default for single-port elements like Supply, Tank
+                    if (parts.Length > 1 && int.TryParse(parts[1], out int parsedPort))
                     {
-                        // Use the new, simpler interface to just set the inlet
-                        cv.SetDirection(inlet);
+                        portNumber = parsedPort;
+                    }
 
-                        // Still create a normal connector for them
-                        List<IPneumaticElement> lst = new() { inlet, directionalElement };
-                        model._nodes.Add(num, new(lst, num));
-                        num++;
+                    var element = model._elements.FirstOrDefault(e => e.Name.Equals(elementName));
+                    if (element != null)
+                    {
+                        if (!elementsForConnector.Contains(element))
+                        {
+                            elementsForConnector.Add(element);
+                        }
+                        elementsAndPorts.Add((element, portNumber));
                     }
                 }
-                else  // Handle normal, symmetrical connection
+
+                if (elementsForConnector.Any())
                 {
-                    string[] nl = nls.Split(',', StringSplitOptions.TrimEntries);
-                    List<IPneumaticElement> lst = new();
-                    foreach (string s in nl)
+                    var connector = new Connector(elementsForConnector, connectionId);
+                    model._nodes.Add(connectionId, connector);
+
+                    foreach (var (element, port) in elementsAndPorts)
                     {
-                        foreach (var node in model._elements)
+                        if (port > 0 && port <= element.Ports.Count)
                         {
-                            if (node.Name.Equals(s))
-                            {
-                                lst.Add(node);
-                                break;
-                            }
+                            element.Ports[port - 1].Connect(connector);
                         }
-                    }
-                    if (lst.Count() > 0)
-                    {
-                        model._nodes.Add(num, new(lst, num));
-                        num++;
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine($"WARNING: Invalid port '{port}' specified for element '{element.Name}'. Check your model.json.");
+                            Console.ResetColor();
+                        }
                     }
                 }
             }
