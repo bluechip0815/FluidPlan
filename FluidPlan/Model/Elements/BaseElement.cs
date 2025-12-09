@@ -8,8 +8,9 @@ namespace FluidSimu
         PneumaticType Type { get; }
         double Pressure { get; }
         bool IsVisible { get; }
-        string ToString(); 
-        void CalcFlow(PneumaticModel model, List<IPneumaticElement> elements, int startIndex);
+        string ToString();
+        void AddConnection(string connectorName, IPneumaticElement connectedElement);
+        void CalcFlow(PneumaticModel model);
         double CalcPressure(PneumaticModel model);
     }
     public abstract class BaseElement : IPneumaticElement
@@ -26,6 +27,7 @@ namespace FluidSimu
         public double LastFlow { get; protected set; } = 0;
         public bool IsVisible { get; protected set; }
         public double FlowCoefficient { get; protected set; } = 1.0;
+        public List<string> ValidConnectorNames { get; protected set; } = new List<string>();
         /// <summary>
         /// 
         /// </summary>
@@ -45,15 +47,30 @@ namespace FluidSimu
         {
             return $"Element #{Id}: {Name} ({Type.ToString()})";
         }
-        public void CalcFlow(PneumaticModel model,List<IPneumaticElement> elements, int startIndex)
+        public Dictionary<string, IPneumaticElement> Connections { get; } = new Dictionary<string, IPneumaticElement>();
+        public void AddConnection(string connectorName, IPneumaticElement connectedElement)
         {
-            for (int idx = startIndex; idx < elements.Count; idx++)
+            if (Connections.ContainsKey(connectorName))
             {
-                var other = elements[idx];
+                // Handle error: connector already in use
+                throw new InvalidOperationException($"Connector '{connectorName}' on element '{Name}' is already connected.");
+            }
+            Connections[connectorName] = connectedElement;
+        }
+        public void CalcFlow(PneumaticModel model)
+        {
+            foreach (var connection in Connections)
+            {
+                var other = connection.Value;
+
+                // By processing flow only when our ID is less than the other's,
+                // we ensure each connection is processed exactly once.
+                if (Id > other.Id)
+                    continue;
 
                 // FIX: If the other element is a Valve (Volume 0), we let the Valve handle the logic.
                 // We do NOT push flow into it blindly.
-                if (other.Type == PneumaticType.valve || 
+                if (other.Type == PneumaticType.valve ||
                     other.Type == PneumaticType.checkvalve)
                     continue;
 

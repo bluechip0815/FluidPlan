@@ -16,6 +16,7 @@ namespace FluidSimu
 
             // z.B. ein Drossel-Koeffizient (0..1 oder größer)
             KvFactor = ParameterHelper.GetDouble(dto, "kv", 1.0);
+            ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {

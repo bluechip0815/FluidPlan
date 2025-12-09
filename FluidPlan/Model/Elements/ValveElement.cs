@@ -20,6 +20,7 @@ namespace FluidSimu
             SwtichingTime = ParameterHelper.GetDouble(dto, "ValveSwitchingTime", 0);
 
             Area = Math.PI / 4 * Diameter * Diameter;
+            ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
         /// <summary>
         /// Implements IControllable to set the commanded state (0 or 1).
@@ -40,13 +41,6 @@ namespace FluidSimu
         {
             // Sort to ensure efficiency
             _schedule = timeline.OrderBy(x => x.TimeSeconds).ToList();
-        }
-        private readonly List<IPneumaticElement> _neighbors = new();
-
-        public void RegisterNeighbor(IPneumaticElement element)
-        {
-            if (!_neighbors.Contains(element))
-                _neighbors.Add(element);
         }
         private double UpdateAndGetCurrentOpening(double simulationTime)
         {
@@ -110,15 +104,18 @@ namespace FluidSimu
             // but it doesn't matter because neighbors act directly on each other now.
             return 0.0;
         }
+        public override void CalcFlow(PneumaticModel model)
+        {
+            // Call DoStep just once. The `otherNode` parameter is not used in the new logic.
+            DoStep(model, null);
+        }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            // Find the two elements that the valve connects.
-            // One is 'otherNode'. The other must be a neighbor different from 'otherNode'.
-            IPneumaticElement? element1 = otherNode;
-            IPneumaticElement? element2 = _neighbors.FirstOrDefault(n => n.Id != element1.Id);
-
-            if (element1 == null || element2 == null)
+            if (!Connections.TryGetValue("1", out var element1) || !Connections.TryGetValue("2", out var element2))
+            {
+                // If not fully connected, do nothing.
                 return;
+            }
 
             // 2. Get Valve State
             double opening = UpdateAndGetCurrentOpening(model.CurrentTime);
