@@ -1,39 +1,19 @@
 namespace FluidSimu
 {
-    public interface IDirectionalElement
-    {
-        void SetDirection(IPneumaticElement inlet/*, IPneumaticElement outlet*/);
-        void RegisterNeighbor(IPneumaticElement neighbor); // Add this
-    }
-
-    public class CheckValveElement : BaseElement, IDirectionalElement
+    public class CheckValveElement : BaseElement
     {
         private readonly double Area;
         private readonly double _openingDeltaP;
-
-        private IPneumaticElement? _inlet;
-        private readonly List<IPneumaticElement> _neighbors = new();
-
         public CheckValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.checkvalve;
             double diameter = ParameterHelper.GetDiameter(dto);
             Area = Math.PI / 4 * diameter * diameter;
             _openingDeltaP = ParameterHelper.GetDouble(dto, "openingdeltap", 0.0);
+            ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
-        // --- Neighbor management methods ---
-        public void RegisterNeighbor(IPneumaticElement element)
-        {
-            if (!_neighbors.Contains(element))
-                _neighbors.Add(element);
-        }
-        // The '>' syntax in the connection string sets the inlet.
-        public void SetDirection(IPneumaticElement inlet/*, IPneumaticElement outlet*/)
-        {
-            _inlet = inlet;
-            // The 'outlet' parameter here is the check valve itself, which we ignore.
-        }
-        public new void CalcFlow(PneumaticModel model, List<IPneumaticElement> elements, int startIndex)
+
+        public override void CalcFlow(PneumaticModel model)
         {
             DoStep(model, null); // Call DoStep just once.
         }
@@ -43,19 +23,15 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
-            // Ensure the inlet has been set by a ">" connection
-            if (_inlet == null)
+            // A check valve must have both an inlet ("1") and an outlet ("2") to function.
+            if (!Connections.TryGetValue("1", out var inlet) || !Connections.TryGetValue("2", out var outlet))
+            {
+                // If not fully connected, do nothing.
                 return;
-
-            // Find the outlet: it's the neighbor that is NOT the inlet.
-            var outlet = _neighbors.FirstOrDefault(n => n.Id != _inlet.Id);
-
-            // If we don't have two distinct neighbors, the valve is not fully connected.
-            if (outlet == null)
-                return;
+            }
 
             // Get pressures from the actual connected elements
-            double pFrom = _inlet.Pressure;
+            double pFrom = inlet.Pressure;
             double pTo = outlet.Pressure;
 
             // Directional and cracking pressure checks
@@ -73,7 +49,7 @@ namespace FluidSimu
             double currentQ = qCharge * model.DeltaT;
 
             // Apply charge to the connected elements, NOT the valve itself
-            model.AddCharge(new ChargeData() { Id = _inlet.Id, dQ = -currentQ });
+            model.AddCharge(new ChargeData() { Id = inlet.Id, dQ = -currentQ });
             model.AddCharge(new ChargeData() { Id = outlet.Id, dQ = +currentQ });
         }
     }

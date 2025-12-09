@@ -18,16 +18,9 @@ namespace FluidSimu
     {
         // The connection port area for flow calculation
         private List<EpuEventDto> _schedule = new();
-        private readonly List<IPneumaticElement> _neighbors = new();
-        public void RegisterNeighbor(IPneumaticElement neighbor)
-        {
-            if (!_neighbors.Contains(neighbor))
-                _neighbors.Add(neighbor);
-        }
         // The target pressure (pSoll) from the schedule.
         private double _targetPressure = 0.0;
         private double Area = 0.0;  
-        public IReadOnlyList<IPneumaticElement> Neighbors => _neighbors;
         private PropValvePT1 _pt1Model { get; set; } = new();
         private PropValvePT2 _pt2Model { get; set; } = new();
         public EpuElement(ElementDto dto, int num) : base(dto, num)
@@ -56,6 +49,7 @@ namespace FluidSimu
             _pt2Model = new PropValvePT2(
                 ParameterHelper.GetDouble(dto, "naturalFrequency", 20.0),
                 ParameterHelper.GetDouble(dto, "dampingRatio", 0.7));
+            ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
         /// <summary>
         /// Implements IControllable to set the target pressure directly.
@@ -104,6 +98,13 @@ namespace FluidSimu
         public override double CalcPressure(PneumaticModel model)
         {
             return CalcPressurePt2(model);
+        }
+        public override void CalcFlow(PneumaticModel model)
+        {
+            foreach (var connection in Connections)
+            {
+                DoStep(model, connection.Value);
+            }
         }
         private double CalcPressurePt2(PneumaticModel model)
         {

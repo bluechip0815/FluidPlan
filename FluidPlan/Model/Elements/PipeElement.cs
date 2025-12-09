@@ -15,7 +15,7 @@ namespace FluidSimu
             Pressure = ParameterHelper.GetPressure(dto);
             Area = Math.PI / 4 * diameter * diameter;
             Volume = Area * length;
-
+            ValidConnectorNames.AddRange(new[] { "1", "2" });
         }
 
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)

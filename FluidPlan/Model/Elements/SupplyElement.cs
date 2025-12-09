@@ -15,6 +15,7 @@ namespace FluidSimu
             if (portDiameter == 0.0) portDiameter = 0.02; // Sane default if neither is specified
 
             Area = Math.PI / 4 * portDiameter * portDiameter;
+            ValidConnectorNames.Add("1");
         }
 
         // DoStep logic is identical to PipeElement's new logic.
