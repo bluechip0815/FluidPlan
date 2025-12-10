@@ -2,30 +2,39 @@
 {
     public static partial class FlowPhysics
     {
-        public const double Rho = 1.2;
         public const double DeltaPCritical = 0.5;
         private const double SMOOTHING_TIME_CONSTANT_SECONDS = 0.005;
-
+        public const double Rho = 1.2; // Density of Air [kg/m^3]
+        private const double BarToPascal = 100000.0; // Conversion factor
         public static double ComputeVolumeFlow(double pUp, double pDown, double area, double flowCoefficient)
         {
             double dp = pUp - pDown;
+
+            // 1. Check for equilibrium
             if (Math.Abs(dp) < 1e-9 || area <= 0.0)
                 return 0.0;
 
             double sign = Math.Sign(dp);
-            double absDp = Math.Abs(dp);
-            double q;
+            double absDpBar = Math.Abs(dp);
 
-            double kLinear = flowCoefficient / Math.Sqrt(DeltaPCritical);
+            // 2. Convert Bar to Pascal for Physics Calculation
+            // Bernoulli Equation: v = Sqrt(2 * DeltaP / Rho)
+            // We use the absolute pressure difference in Pascals.
+            double dpPascal = absDpBar * BarToPascal;
 
-            if (absDp < DeltaPCritical)
+            // 3. Calculate Velocity [m/s]
+            // This naturally produces the ~408 factor properly derived from physics.
+            double velocity = Math.Sqrt((2.0 * dpPascal) / Rho);
+
+            // 4. Calculate Volume Flow [m^3/s]
+            // Q = Area * Velocity * FlowCoefficient (Cd)
+            double q = area * velocity * flowCoefficient;
+
+            // Optional: Choked Flow Check (Speed of Sound limit)
+            // Air cannot move faster than approx 340 m/s at room temp.
+            if (velocity > 340.0)
             {
-                // Now this connects smoothly to the sqrt curve
-                q = kLinear * area * absDp;
-            }
-            else
-            {
-                q = flowCoefficient * area * Math.Sqrt(absDp);
+                q = area * 340.0 * flowCoefficient;
             }
 
             return sign * q;

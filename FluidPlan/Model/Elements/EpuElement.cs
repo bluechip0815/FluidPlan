@@ -26,17 +26,12 @@ namespace FluidSimu
         }
         // The target pressure (pSoll) from the schedule.
         private double _targetPressure = 0.0;
-        private double Area = 0.0;  
         public IReadOnlyList<IPneumaticElement> Neighbors => _neighbors;
         private PropValvePT1 _pt1Model { get; set; } = new();
         private PropValvePT2 _pt2Model { get; set; } = new();
         public EpuElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.epu;
-
-            // An EPU now has a specific port diameter for its connection.
-            Area = Math.PI / 4 * Diameter * Diameter;
-
             Pressure = ParameterHelper.GetPressure(dto);
 
             _pt1Model = new PropValvePT1(
@@ -80,21 +75,12 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            // Calculate flow through our connection port.
-            var effectiveDiameter = Math.Min(Diameter, otherNode.Diameter);
-            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2);
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(Pressure, otherNode.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
-            LastFlow = q;
-            double pMean = 0.5 * (Pressure + otherNode.Pressure);
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
-            double currentQ = qCharge * model.DeltaT;
-
-            // The neighbor GAINS charge from us, and we LOSE charge.
-            // Note: Our own pressure is recalculated by the PT2 model, so this dQ for our own Id
-            // will be ignored, which is correct for a perfect regulator. But we still calculate it
-            // for physical consistency.
-            model.AddCharge(new ChargeData() { Id = this.Id, dQ = -currentQ });
-            model.AddCharge(new ChargeData() { Id = otherNode.Id, dQ = +currentQ });
+            // The BaseElement logic acts generically.
+            // It will:
+            // 1. Calculate effective area = Math.Min(this.Area, otherNode.Area)
+            // 2. Use the upstream pressure for density (The fix for your "slow filling" issue)
+            // 3. Add/Subtract charge to the model for both IDs.
+            CalculateAndApplyFlow(model, otherNode);
         }
         public override double CalcPressure(PneumaticModel model)
         {

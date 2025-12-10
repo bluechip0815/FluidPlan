@@ -2,8 +2,6 @@ namespace FluidSimu
 {
     public class ValveElement : BaseElement, IControllable
     {
-        private readonly double Area;
-        private readonly double Diameter;
         // Ventil-Schaltzeit selbst(intern) liegt oft im Bereich von etwa 10–50 ms, je nach Typ.
         private readonly double SwtichingTime;
         // The state (0 or 1) the valve is moving TOWARDS.
@@ -16,8 +14,6 @@ namespace FluidSimu
         {
             Type = PneumaticType.valve;
             SwtichingTime = ParameterHelper.GetDouble(dto, "ValveSwitchingTime", 0);
-
-            Area = Math.PI / 4 * Diameter * Diameter;
         }
         /// <summary>
         /// Implements IControllable to set the commanded state (0 or 1).
@@ -110,55 +106,19 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement otherNode)
         {
-            // Find the two elements that the valve connects.
-            // One is 'otherNode'. The other must be a neighbor different from 'otherNode'.
-            IPneumaticElement? element1 = otherNode;
-            IPneumaticElement? element2 = _neighbors.FirstOrDefault(n => n.Id != element1.Id);
-
-            if (element1 == null || element2 == null)
-                return;
-
-            // 2. Get Valve State
             double opening = UpdateAndGetCurrentOpening(model.CurrentTime);
+
             if (opening <= 1e-6)
             {
-                Pressure = 0;   // Valve is closed
-                return;         // No flow
-            }
-            else
-            {
-                Pressure = 1; // Valve is open (internal state, not physical pressure)
+                LastFlow = 0;
+                return;
             }
 
-            // 3. Calculate Flow between element1 and element2
-            // Use the Area * Opening
-            // Calculate flow: q is positive if p1 > p2, negative if p2 > p1
-            var effectiveDiameter = Math.Min(element1.Diameter, element2.Diameter);
-            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2) * opening;
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(element1.Pressure, element2.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
-            LastFlow = q;
+            // 2. Calculate the Valve's current open area
+            double currentValveArea = this.Area * opening;
 
-            // If q is positive, flow is from element1 to element2.
-            // If q is negative, flow is from element2 to element1.
-
-            // 4. Calculate Charge Transfer
-            double pMean = 0.5 * (element1.Pressure + element2.Pressure);
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(Math.Abs(q), pMean); // Use absolute value of q for charge amount
-
-            double currentChargeTransfer = qCharge * model.DeltaT;
-
-            // 5. Apply Charge DIRECTLY to the neighbors (Skipping the Valve itself)
-            if (q > 0) // Flow from element1 to element2
-            {
-                model.AddCharge(new ChargeData() { Id = element1.Id, dQ = -currentChargeTransfer });
-                model.AddCharge(new ChargeData() { Id = element2.Id, dQ = +currentChargeTransfer });
-            }
-            else if (q < 0) // Flow from element2 to element1
-            {
-                model.AddCharge(new ChargeData() { Id = element2.Id, dQ = -currentChargeTransfer });
-                model.AddCharge(new ChargeData() { Id = element1.Id, dQ = +currentChargeTransfer });
-            }
-            // If q == 0, no charge transfer.
+            // 3. Pass this dynamic area to the calculation
+            CalculateAndApplyFlow(model, otherNode, currentValveArea);
         }
     }
 }

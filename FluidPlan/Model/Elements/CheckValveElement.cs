@@ -8,7 +8,6 @@ namespace FluidSimu
 
     public class CheckValveElement : BaseElement, IDirectionalElement
     {
-        private readonly double Area;
         private readonly double _openingDeltaP;
 
         private IPneumaticElement? _inlet;
@@ -16,7 +15,6 @@ namespace FluidSimu
         public CheckValveElement(ElementDto dto, int num) : base(dto, num)
         {
             Type = PneumaticType.checkvalve;
-            Area = Math.PI / 4 * Diameter * Diameter;
             _openingDeltaP = ParameterHelper.GetDouble(dto, "openingdeltap", 0.0);
         }
         // --- Neighbor management methods ---
@@ -41,40 +39,24 @@ namespace FluidSimu
         }
         protected override void DoStep(PneumaticModel model, IPneumaticElement? otherNode)
         {
-            // Ensure the inlet has been set by a ">" connection
-            if (_inlet == null)
-                return;
-
-            // Find the outlet: it's the neighbor that is NOT the inlet.
+            // 1. Connectivity Checks
+            if (_inlet == null) return;
             var outlet = _neighbors.FirstOrDefault(n => n.Id != _inlet.Id);
+            if (outlet == null) return;
 
-            // If we don't have two distinct neighbors, the valve is not fully connected.
-            if (outlet == null)
-                return;
-
-            // Get pressures from the actual connected elements
-            double pFrom = _inlet.Pressure;
-            double pTo = outlet.Pressure;
-
-            // Directional and cracking pressure checks
-            if (pFrom <= pTo + _openingDeltaP)
+            // 2. Directional Logic (Is the "Diode" forward biased?)
+            //    We check pressure diff manually because CheckValves have a "Cracking Pressure"
+            if (_inlet.Pressure <= outlet.Pressure + _openingDeltaP)
             {
                 LastFlow = 0;
                 return; // Valve is closed
             }
 
-            // If open, calculate flow between INLET and OUTLET
-            var effectiveDiameter = Math.Min(_inlet.Diameter, outlet.Diameter);
-            var effectiveArea = Math.PI / 4 * Math.Pow(effectiveDiameter, 2);
-            double q = FlowPhysics.ComputeSmoothedVolumeFlow(_inlet.Pressure, outlet.Pressure, effectiveArea, FlowCoefficient, LastFlow, model.DeltaT);
-            LastFlow = q;
-            double pMean = 0.5 * (_inlet.Pressure + outlet.Pressure);
-            double qCharge = FlowPhysics.VolumeFlowToChargeFlow(q, pMean);
-            double currentQ = qCharge * model.DeltaT;
-
-            // Apply charge to the connected elements, NOT the valve itself
-            model.AddCharge(new ChargeData() { Id = _inlet.Id, dQ = -currentQ });
-            model.AddCharge(new ChargeData() { Id = outlet.Id, dQ = +currentQ });
+            // 3. Flow Calculation
+            //    We pass the 'outlet' as the neighbor.
+            //    CalculateAndApplyFlow handles the areas and density.
+            //    We rely on the physics that if P_inlet > P_outlet, q will be positive.
+            CalculateAndApplyFlow(model, outlet);
         }
     }
 }

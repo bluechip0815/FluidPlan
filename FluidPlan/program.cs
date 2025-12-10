@@ -41,8 +41,9 @@ namespace FluidSimu
             // 2. Inject Profile (Crucial Step: Connect Actuators)
             var profileAdapter = new ProfileAdapter(profileDto);
             // DIRECTLY APPLY PROFILE TO ELEMENTS
-            double lastEventTime =  model.ApplyProfile(profileDto);
-            double minRunTime = lastEventTime + 5.0;
+            double lastEventTime = model.ApplyProfile(profileDto);
+            // add only if actions take place
+            double minRunTime = lastEventTime > 0 ? + 5.0 : 0;
 
             // LOGIC SETUP
             double dt = profileDto.TimeStepSeconds;
@@ -55,7 +56,6 @@ namespace FluidSimu
             // 4. Run with Logging
             using (var logger = new SimulationLogger(Path.Combine(outputPath, logFileName), model.Elements))
             {
-                double t = 0;
                 bool isSteady = false;
 
                 // LOOP CONDITION:
@@ -63,7 +63,7 @@ namespace FluidSimu
                 // 2. Once past events, continue running ONLY IF pressure delta > tolerance.
                 // 3. Stop if we hit hardTimeLimit.
                 model.Reset(profileDto.TimeStepSeconds);
-                while ((!isSteady && t < hardTimeLimit) || t<minRunTime)
+                while ((!isSteady && model.CurrentTime < hardTimeLimit) || model.CurrentTime < minRunTime)
                 {
                     model.Execute();
                     logger.LogStep(model.CurrentTime);
@@ -71,24 +71,21 @@ namespace FluidSimu
                     // Check stability
                     isSteady = model.LastMaxPressureDelta < tolerance;
 
-                    if (isSteady && t > minRunTime)
+                    if (isSteady && model.CurrentTime > minRunTime)
                     {
-                        Console.WriteLine($"\nSteady state reached at T={t:F2}s (DeltaP: {model.LastMaxPressureDelta:E2})");
+                        Console.WriteLine($"\nSteady state reached at T={model.CurrentTime:F2}s (DeltaP: {model.LastMaxPressureDelta:E2})");
                         break;
                     }
-
-                    t += dt;
-
                     // Console feedback
-                    if (Math.Round(t / dt) % 10 == 0)
-                        Console.Write($"\rTime: {t:F1}s | Max dP: {model.LastMaxPressureDelta:F6}");
+                    if (Math.Round(model.CurrentTime / dt) % 10 == 0)
+                        Console.Write($"\rTime: {model.CurrentTime:F1}s | Max dP: {model.LastMaxPressureDelta:F6}");
                 }
             }
 
             Console.WriteLine($"\nSimulation finished. Results saved to {outputPath}");
             ResultVisualizer.CreateCharts(
                 Path.Combine(outputPath, logFileName),
-                Path.Combine(outputPath, FileNameSanitizer.Sanitize(modelDto.ModelName)+"_chart.png"),
+                Path.Combine(outputPath, FileNameSanitizer.Sanitize(modelDto.ModelName) + "_chart.png"),
                 modelDto);
         }
         private static T LoadJson<T>(string path)
