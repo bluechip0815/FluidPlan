@@ -1,0 +1,303 @@
+(*====================================================================
+    FUNCTION_BLOCK FB_PneumaticModel
+    Description: Orchestrates the entire pneumatic simulation.
+                 It holds the state of all elements and manages the
+                 two-phase execution (Flow Calc, Pressure Update).
+====================================================================*)
+FUNCTION_BLOCK FB_PneumaticModel
+VAR_INPUT
+    bEnable             : BOOL;     // Master enable for simulation
+    bExecuteStep        : BOOL;     // Executes one simulation step on rising edge
+    fDeltaT             : LREAL := 0.001; // Simulation time step in seconds
+END_VAR
+VAR_IN_OUT
+    // Configuration (read-only after init)
+    arElementConfigs    : ARRAY[*] OF ST_Element_Config;
+    arConnections       : ARRAY[*] OF ST_Connection;
+
+    // Real-time I/O
+    arControlInputs     : ARRAY[*] OF LREAL; // HMI/Control inputs for Valves, EPUs
+    arMonitoredPressures: ARRAY[*] OF LREAL; // Outputs for HMI/Monitoring
+END_VAR
+VAR
+    // Internal State
+    _arElementStates    : ARRAY[1..GVL.MAX_ELEMENTS] OF ST_Element_State;
+    _arChargeDeltas     : ARRAY[1..GVL.MAX_ELEMENTS] OF LREAL;
+    _fCurrentSimTime    : LREAL;
+
+    // Helpers
+    _kNonlinear         : LREAL := 4.0;
+    _deltaPCritical     : LREAL := 0.5;
+
+    _trigExecuteStep    : R_TRIG;
+    _trigEnable         : R_TRIG;
+END_VAR
+
+// Initialize on first enable
+_trigEnable(CLK := bEnable);
+IF _trigEnable.Q THEN
+    _InitializeStates();
+END_IF;
+
+// The main logic is called cyclically
+IF NOT bEnable THEN
+    RETURN;
+END_IF;
+
+// Execute one step on a rising edge trigger
+_trigExecuteStep(CLK := bExecuteStep);
+IF _trigExecuteStep.Q THEN
+
+    // === PHASE 1: CALCULATE FLOWS ===
+    _ResetChargeDeltas();
+    _CalculateAllFlows();
+
+    // === PHASE 2: UPDATE PRESSURES ===
+    _UpdateAllPressures();
+
+    // === PHASE 3: UPDATE MONITORING ===
+    _UpdateMonitoring();
+
+    // Advance simulation time
+    _fCurrentSimTime := _fCurrentSimTime + fDeltaT;
+END_IF;
+
+METHOD _InitializeStates : BOOL
+VAR
+    i : UINT;
+END_VAR
+FOR i := 1 TO GVL.MAX_ELEMENTS DO
+    _arElementStates[i].fPressure_bar := arElementConfigs[i].fInitialPressure;
+END_FOR;
+
+
+METHOD _ResetChargeDeltas : BOOL
+VAR
+	i : UINT;
+END_VAR
+FOR i := 1 TO GVL.MAX_ELEMENTS DO
+    _arChargeDeltas[i] := 0.0;
+END_FOR;
+
+METHOD _CalculateAllFlows : BOOL
+VAR
+    i, iA, iB : UINT;
+    eTypeA, eTypeB : E_ElementType;
+END_VAR
+
+FOR i := 1 TO GVL.MAX_CONNECTIONS DO
+    iA := arConnections[i].iElementA;
+    iB := arConnections[i].iElementB;
+
+    // Skip invalid connections
+    IF iA = 0 OR iB = 0 THEN CONTINUE; END_IF;
+
+    eTypeA := arElementConfigs[iA].eType;
+    eTypeB := arElementConfigs[iB].eType;
+
+    // --- Core Flow Logic ---
+    IF eTypeA = E_ElementType.Valve THEN
+        _CalculateFlow_Valve(iValve := iA);
+    ELSIF eTypeB = E_ElementType.Valve THEN
+        _CalculateFlow_Valve(iValve := iB);
+    ELSE
+        // Standard flow calculation between two non-valve elements
+        _CalculateFlow_Generic(iElement1 := iA, iElement2 := iB);
+    END_IF;
+END_FOR;
+
+METHOD _UpdateAllPressures : BOOL
+VAR
+    i : UINT;
+END_VAR
+
+FOR i := 1 TO GVL.MAX_ELEMENTS DO
+    // Update state based on type
+    CASE arElementConfigs[i].eType OF
+        E_ElementType.Pipe, E_ElementType.Tank:
+            _UpdatePressure_VolumeElement(iElement := i);
+        E_ElementType.EPU:
+            _UpdatePressure_EPU(iElement := i);
+        E_ElementType.Supply:
+            // Pressure is constant, do nothing.
+        E_ElementType.Valve:
+            // A valve has no pressure of its own.
+    END_CASE;
+END_FOR;
+
+METHOD _UpdateMonitoring : BOOL
+VAR
+    i : UINT;
+END_VAR
+FOR i := 1 TO GVL.MAX_ELEMENTS DO
+    arMonitoredPressures[i] := _arElementStates[i].fPressure_bar;
+END_FOR;
+
+METHOD PRIVATE _UpdatePressure_VolumeElement : BOOL
+VAR_INPUT
+    iElement : UINT;
+END_VAR
+VAR
+    dQ : LREAL;
+    currentCharge : LREAL;
+    volume : LREAL;
+END_VAR
+
+volume := arElementConfigs[iElement].fVolume;
+IF volume > 0 THEN
+    currentCharge := _arElementStates[iElement].fPressure_bar * volume;
+    dQ := currentCharge + _arChargeDeltas[iElement];
+    _arElementStates[iElement].fPressure_bar := dQ / volume;
+END_IF;
+
+METHOD PRIVATE _UpdatePressure_EPU : BOOL
+VAR_INPUT
+    iElement : UINT;
+END_VAR
+VAR
+    targetPressure  : LREAL;
+    currentValue    : LREAL;
+    currentVelocity : LREAL;
+    wn2             : LREAL;
+    two_zeta_wn     : LREAL;
+    error           : LREAL;
+    acceleration    : LREAL;
+    newVelocity     : LREAL;
+    newValue        : LREAL;
+    natFreq         : LREAL;
+    dampRatio       : LREAL;
+END_VAR
+
+targetPressure  := arControlInputs[iElement];
+currentValue    := _arElementStates[iElement].fPressure_bar;
+currentVelocity := _arElementStates[iElement].fPressureVelocity;
+
+natFreq   := arElementConfigs[iElement].stEpuParams.fNaturalFrequency;
+dampRatio := arElementConfigs[iElement].stEpuParams.fDampingRatio;
+
+wn2 := natFreq * natFreq;
+two_zeta_wn := 2 * dampRatio * natFreq;
+
+error := targetPressure - currentValue;
+acceleration := wn2 * error - two_zeta_wn * currentVelocity;
+
+newVelocity := currentVelocity + acceleration * fDeltaT;
+newValue := currentValue + newVelocity * fDeltaT;
+
+_arElementStates[iElement].fPressure_bar := newValue;
+_arElementStates[iElement].fPressureVelocity := newVelocity;
+
+
+METHOD PRIVATE _CalculateFlow_Generic : BOOL
+VAR_INPUT
+    iElement1 : UINT;
+    iElement2 : UINT;
+END_VAR
+VAR
+    p1, p2, pMean, q, qCharge, dQ : LREAL;
+    area : LREAL;
+END_VAR
+
+p1 := _arElementStates[iElement1].fPressure_bar;
+p2 := _arElementStates[iElement2].fPressure_bar;
+
+// Use the smaller of the two connection areas
+area := MIN(arElementConfigs[iElement1].fConnectionArea, arElementConfigs[iElement2].fConnectionArea);
+
+q := _ComputeVolumeFlow(pUp := p1, pDown := p2, area := area);
+pMean := 0.5 * (p1 + p2);
+qCharge := q * pMean;
+dQ := qCharge * fDeltaT;
+
+// Element 1 loses charge, Element 2 gains charge
+_arChargeDeltas[iElement1] := _arChargeDeltas[iElement1] - dQ;
+_arChargeDeltas[iElement2] := _arChargeDeltas[iElement2] + dQ;
+
+METHOD PRIVATE _CalculateFlow_Valve : BOOL
+VAR_INPUT
+    iValve : UINT;
+END_VAR
+VAR
+    i   : UINT;
+    iA, iB : UINT;
+    neighbors : ARRAY[1..2] OF UINT;
+    neighbor_count : UINT := 0;
+    openingFactor : LREAL;
+    pA, pB, pMean, q, qCharge, dQ, area : LREAL;
+END_VAR
+
+// Find the two neighbors of the valve
+FOR i := 1 TO GVL.MAX_CONNECTIONS DO
+    IF arConnections[i].iElementA = iValve THEN
+        neighbor_count := neighbor_count + 1;
+        neighbors[neighbor_count] := arConnections[i].iElementB;
+    ELSIF arConnections[i].iElementB = iValve THEN
+        neighbor_count := neighbor_count + 1;
+        neighbors[neighbor_count] := arConnections[i].iElementA;
+    END_IF;
+    IF neighbor_count = 2 THEN
+        EXIT;
+    END_IF;
+END_FOR;
+
+IF neighbor_count <> 2 THEN
+    RETURN; // Valve is not connected correctly
+END_IF;
+
+iA := neighbors[1];
+iB := neighbors[2];
+
+openingFactor := arControlInputs[iValve];
+IF openingFactor < 0.0 THEN openingFactor := 0.0; END_IF;
+IF openingFactor > 1.0 THEN openingFactor := 1.0; END_IF;
+
+pA := _arElementStates[iA].fPressure_bar;
+pB := _arElementStates[iB].fPressure_bar;
+
+area := arElementConfigs[iValve].fConnectionArea * openingFactor;
+
+q := _ComputeVolumeFlow(pUp := pA, pDown := pB, area := area);
+pMean := 0.5 * (pA + pB);
+qCharge := q * pMean;
+dQ := qCharge * fDeltaT;
+
+// Element A loses charge, Element B gains charge
+_arChargeDeltas[iA] := _arChargeDeltas[iA] - dQ;
+_arChargeDeltas[iB] := _arChargeDeltas[iB] + dQ;
+
+
+METHOD PRIVATE _ComputeVolumeFlow : LREAL
+VAR_INPUT
+    pUp     : LREAL;
+    pDown   : LREAL;
+    area    : LREAL;
+END_VAR
+VAR
+    dp      : LREAL;
+    sign    : LREAL;
+    absDp   : LREAL;
+    q       : LREAL;
+    kLinear : LREAL;
+END_VAR
+
+dp := pUp - pDown;
+IF ABS(dp) < 1E-9 OR area <= 0.0 THEN
+    RETURN 0.0;
+END_IF;
+
+sign := 1.0;
+IF dp < 0 THEN
+    sign := -1.0;
+END_IF;
+
+absDp := ABS(dp);
+
+kLinear := _kNonlinear / SQRT(_deltaPCritical);
+
+IF absDp < _deltaPCritical THEN
+    q := kLinear * area * absDp;
+ELSE
+    q := _kNonlinear * area * SQRT(absDp);
+END_IF;
+
+RETURN sign * q;

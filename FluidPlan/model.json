@@ -1,0 +1,101 @@
+{
+  "modelName": "EPU Drain",
+  "description": "Supply -> R1 -> V1 -> T1, V1 -> V2 -> Exhaust)",
+  "connections": {
+    "1": ["Supply.1", "R1.1"],
+    "2": ["R1.2", "V1.1", "EPU.1"],
+    "3": ["V1.2", "V2.2", "R2.1"],
+    "4": ["EPU.2", "R3.1"],
+    "5": ["R3.2", "V2.1"],
+    "6": ["R2.2", "T1.1"]
+  },
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "EPU",
+      "type": "EPU",
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters":
+	  {
+        "diameter": "2cm",
+		 "timeConstant": "1.1",
+         "maxDpDt": "35.0"
+      }
+    },
+    {
+      "name": "R1",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "R2",
+      "type": "Pipe",
+  	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "R3",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen EPU und R2",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "10cm",
+        "diameter": "2cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+  	  "visible" : true,
+      "description": "Befüllen T1",
+      "flowCoefficient": 1.5,
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm"
+      }
+    },
+    {
+      "name": "V2",
+      "type": "Valve",
+  	  "visible" : true,
+      "description": "Ablassen über EPU",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+  	  "visible" : true,
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "2l",
+        "portDiameter": "5mm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

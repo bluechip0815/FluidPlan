@@ -1,0 +1,8 @@
+TYPE ST_Epu_Params :
+STRUCT
+    fTimeConstant : LREAL;
+    fMaxDpDt : LREAL;
+    fNaturalFrequency : LREAL;
+    fDampingRatio : LREAL;
+END_STRUCT
+END_TYPE

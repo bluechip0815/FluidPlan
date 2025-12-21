@@ -1,0 +1,26 @@
+(*====================================================================
+    MAIN PROGRAM (PRG)
+    Description: Instantiates and calls the main simulation block.
+====================================================================*)
+PROGRAM MAIN
+VAR
+    fbPneumaticModel : FB_PneumaticModel;
+    bInitDone       : BOOL := FALSE;
+END_VAR
+
+IF NOT bInitDone THEN
+    F_InitializeModel();
+    bInitDone := TRUE;
+END_IF;
+
+
+// Call the orchestrator, passing the global arrays as VAR_IN_OUT
+fbPneumaticModel(
+    bEnable := TRUE,
+    bExecuteStep := g_bSimExecuteStep,
+    fDeltaT := 0.001,
+    arElementConfigs := g_arElementConfigs,
+    arConnections := g_arConnections,
+    arControlInputs := g_arControlInputs,
+    arMonitoredPressures := g_arMonitoredPressures
+);

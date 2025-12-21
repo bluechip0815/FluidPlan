@@ -1,0 +1,68 @@
+{
+  "modelName": "V1 Throttle",
+  "description": "Fill Tank via Throttle",
+  "connections": 
+  { 
+	"1" :["Supply.1", "R1.1"],
+	"2" :["R1.2" ,"V1.1"],
+	"3" :["V1.2" ,"D1.1"],
+	"4" :["D1.2", "T1.1"]
+  },
+
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "diameter": "2cm",
+        "pressure": "6.0"
+      }
+    },	
+    {
+      "name": "R1",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen Supply und V1",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },	
+    {
+      "name": "D1",
+      "type": "Throttle",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen V1 und T1",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1cm",
+        "diameter": "2mm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Befüllen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+	  "visible" : true,
+      "description": "Verbrauchertank",
+	  "parameters": {
+        "volume": "2l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

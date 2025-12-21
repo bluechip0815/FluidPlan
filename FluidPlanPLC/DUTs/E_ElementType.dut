@@ -1,0 +1,16 @@
+(*====================================================================
+    ENUM: Element Types
+    Description: Defines all supported types of pneumatic elements.
+====================================================================*)
+TYPE E_ElementType :
+(
+    NONE                := 0,
+    Pipe                := 10,
+    Tank                := 20,
+    Valve               := 30,
+    Supply              := 40,  // Includes Exhaust (Pressure = 0)
+    EPU                 := 50,
+    CheckValve          := 60,
+    Throttle            := 70
+);
+END_TYPE

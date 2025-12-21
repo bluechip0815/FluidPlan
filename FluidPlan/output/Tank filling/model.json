@@ -1,0 +1,43 @@
+{
+  "modelName": "Tank filling",
+  "description": "Supply -> R1 -> T1",
+  "connections": 
+  { 
+	"1" :[ "Supply.1", "R1.1"],
+	"2" :[ " R1.2" , "T1.1"]
+  },
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "diameter": "2cm",
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "R1",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Rohr R1 zwischen Supply und T1",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "T1",
+      "type": "Tank",
+	  "visible" : true,
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "5l",
+        "diameter": "10mm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

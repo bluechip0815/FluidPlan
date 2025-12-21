@@ -1,0 +1,6 @@
+FluidPlan/bin/
+FluidPlan/obj/
+FluidPlan/output/old/
+PLCGen/obj/
+PLCGen/bin/
+.vs/

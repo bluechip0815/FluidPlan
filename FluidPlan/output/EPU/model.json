@@ -1,0 +1,70 @@
+{
+  "modelName": "EPU",
+  "description": "Supply -> EPU -> V1 -> T1, V2 -> Exhaust)",
+  "connections": 
+  { 
+	"1" :["Supply.1" ,"EPU.In"],
+	"2" :["EPU.Out" ,"V1.1"],
+	"3" :["V1.2" ,"V2.1", "T.1" ],
+	"4" :["V2.2", "Exhaust.1"]
+  },
+
+  "elements": [
+    {
+      "name": "Supply",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "Exhaust",
+      "type": "Exhaust",
+      "description": "Auslass",
+	  "parameters": {
+        "pressure": "0.0"
+      }
+    },
+    {
+      "name": "EPU",
+      "type": "EPU",
+	  "visible" : true,
+      "description": "Regler",
+	  "parameters": {
+        "pressure": "0.0"
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Befüllen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V2",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Ablassen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "T",
+      "type": "Tank",
+	  "visible" : true,
+      "description": "Verbrauchertank am Knoten 6",
+	  "parameters": {
+        "volume": "2l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "timeStepSeconds": 0.00005,
+  "steadyTolerance": 0.0001,
+  "hardTimeLimit": 3,
+
+"physicsParameters": {
+    "smoothingTimeConstant": 0.0001,
+    "airDensityRho": 1.2,
+    "criticalPressureDelta": 0.5
+  },
+
+
+  "valveTimelines": {
+    "V1": [
+      { "timeSeconds": 0.25, "state": 1.0 },
+      { "timeSeconds": 0.27, "state": 0.0 }
+    ]
+  }
+}
