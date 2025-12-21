@@ -8,32 +8,22 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    
-    runs-on: ${{ matrix.os }}
-    
+    runs-on: windows-latest
+
     steps:
-    - uses: actions/checkout@v4
-    
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Setup .NET 9
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
-    
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libfontconfig1
-    
+
+    - name: dotnet info
+      run: dotnet --info
+
     - name: Restore dependencies
       run: dotnet restore FluidPlan.sln
-    
+
     - name: Build
       run: dotnet build FluidPlan.sln --no-restore --configuration Release
-    
-    # Optional: Falls du Tests hinzufügst
-    # - name: Run tests
-    #   run: dotnet test FluidPlan.sln --no-build --configuration Release --verbosity normal
