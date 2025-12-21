@@ -8,32 +8,41 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    
-    runs-on: ${{ matrix.os }}
-    
+    runs-on: windows-latest
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
-    
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libfontconfig1
-    
-    - name: Restore dependencies
-      run: dotnet restore FluidPlan.sln
-    
-    - name: Build
-      run: dotnet build FluidPlan.sln --no-restore --configuration Release
-    
-    # Optional: Falls du Tests hinzufügst
-    # - name: Run tests
-    #   run: dotnet test FluidPlan.sln --no-build --configuration Release --verbosity normal
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Show workspace
+        shell: pwsh
+        run: |
+          Write-Host "GITHUB_WORKSPACE=$env:GITHUB_WORKSPACE"
+          Set-Location $env:GITHUB_WORKSPACE
+          Write-Host "Files in repo root:"
+          Get-ChildItem -Force
+
+      - name: Fail if solution missing
+        shell: pwsh
+        run: |
+          if (!(Test-Path "FluidPlan.sln")) {
+            Write-Error "FluidPlan.sln not found in workspace root."
+            Get-ChildItem -Recurse -Filter *.sln | ForEach-Object { $_.FullName }
+            exit 1
+          }
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: dotnet info
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore .\FluidPlan.sln
+
+      - name: Build (Release)
+        run: dotnet build .\FluidPlan.sln --no-restore --configuration Release
