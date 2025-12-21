@@ -11,19 +11,38 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-    - name: Setup .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
+      - name: Show workspace
+        shell: pwsh
+        run: |
+          Write-Host "GITHUB_WORKSPACE=$env:GITHUB_WORKSPACE"
+          Set-Location $env:GITHUB_WORKSPACE
+          Write-Host "Files in repo root:"
+          Get-ChildItem -Force
 
-    - name: dotnet info
-      run: dotnet --info
+      - name: Fail if solution missing
+        shell: pwsh
+        run: |
+          if (!(Test-Path "FluidPlan.sln")) {
+            Write-Error "FluidPlan.sln not found in workspace root."
+            Get-ChildItem -Recurse -Filter *.sln | ForEach-Object { $_.FullName }
+            exit 1
+          }
 
-    - name: Restore dependencies
-      run: dotnet restore FluidPlan.sln
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
 
-    - name: Build
-      run: dotnet build FluidPlan.sln --no-restore --configuration Release
+      - name: dotnet info
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore .\FluidPlan.sln
+
+      - name: Build (Release)
+        run: dotnet build .\FluidPlan.sln --no-restore --configuration Release
