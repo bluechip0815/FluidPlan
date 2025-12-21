@@ -1,0 +1,39 @@
+name: FluidPlan CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libfontconfig1
+    
+    - name: Restore dependencies
+      run: dotnet restore FluidPlan.sln
+    
+    - name: Build
+      run: dotnet build FluidPlan.sln --no-restore --configuration Release
+    
+    # Optional: Falls du Tests hinzufügst
+    # - name: Run tests
+    #   run: dotnet test FluidPlan.sln --no-build --configuration Release --verbosity normal
