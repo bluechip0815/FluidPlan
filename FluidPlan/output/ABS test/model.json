@@ -1,0 +1,142 @@
+{
+  "modelName": "ABS test",
+  "description": "Supply -> EPU -> V1 -> T1, V2 -> Exhaust)",
+  "connections": 
+  { 
+    "1": ["Supply1.1", "EPU.in"],
+    "2": ["EPU.out", "V1.1"],
+    "3": ["V1.2", "V2.1", "R1.1"],
+    "4": ["V2.2", "Exhaust.1"],
+    "5": ["R1.2", "M1.1"],
+    "6": ["M1.2", "M2.1", "R2.1"],
+    "7": ["M2.2", "Exhaust.1"],
+    "8": ["R2.2", "V3.1", "V4.1"],
+    "9": ["V3.2", "T.1"],
+    "10": ["V4.2", "Exhaust.1"],
+  },
+
+  "elements": [
+    {
+      "name": "Supply1",
+      "type": "Supply",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+		"diameter": "1cm",
+        "pressure": "6.0"
+      }
+    },
+    {
+      "name": "EPU",
+      "type": "EPU",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+		"diameter": "1cm",
+        "pressure": "10.0"
+      }
+    },
+    {
+      "name": "Exhaust",
+      "type": "Exhaust",
+      "description": "Druckluftversorgung",
+	  "parameters": {
+		"diameter": "1cm",
+        "pressure": "0.0"
+      }
+    },
+    {
+      "name": "M1",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Bremsen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "M2",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Lösen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V1",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Befüllen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V2",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Ablassen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V3",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Tank anschließen",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+    {
+      "name": "V4",
+      "type": "Valve",
+	  "visible" : true,
+      "description": "Tank leeren",
+	  "parameters": {
+        "pressure": "0.0",
+        "diameter": "2cm",
+      }
+    },
+	{
+      "name": "R1",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Eingang DUT",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },
+	{
+      "name": "R2",
+      "type": "Pipe",
+	  "visible" : true,
+      "description": "Ausgang DUT",
+	  "parameters": {
+        "pressure": "0.0",
+        "length": "1m",
+        "diameter": "1cm",
+        "roughness": "0.0"
+      }
+    },
+    {
+      "name": "T",
+      "type": "Tank",
+	  "visible" : true,
+      "description": "Bremse",
+	  "parameters": {
+        "volume": "5l",
+        "diameter": "2cm",
+        "pressure": "0.0"
+      }
+    }
+  ]
+}
