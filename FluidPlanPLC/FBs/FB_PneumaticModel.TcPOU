@@ -83,7 +83,11 @@ METHOD _CalculateAllFlows : BOOL
 VAR
     i, iA, iB : UINT;
     eTypeA, eTypeB : E_ElementType;
+    processedElements : ARRAY[1..GVL.MAX_ELEMENTS] OF BOOL;
 END_VAR
+
+// Reset processed flags
+MEMSET(ADR(processedElements), 0, SIZEOF(processedElements));
 
 FOR i := 1 TO GVL.MAX_CONNECTIONS DO
     iA := arConnections[i].iElementA;
@@ -96,13 +100,33 @@ FOR i := 1 TO GVL.MAX_CONNECTIONS DO
     eTypeB := arElementConfigs[iB].eType;
 
     // --- Core Flow Logic ---
-    IF eTypeA = E_ElementType.Valve THEN
+    IF eTypeA = E_ElementType.Valve AND NOT processedElements[iA] THEN
         _CalculateFlow_Valve(iValve := iA);
-    ELSIF eTypeB = E_ElementType.Valve THEN
+        processedElements[iA] := TRUE;
+    ELSIF eTypeB = E_ElementType.Valve AND NOT processedElements[iB] THEN
         _CalculateFlow_Valve(iValve := iB);
+        processedElements[iB] := TRUE;
+    ELSIF eTypeA = E_ElementType.Throttle AND NOT processedElements[iA] THEN
+        _CalculateFlow_Throttle(iThrottle := iA);
+        processedElements[iA] := TRUE;
+    ELSIF eTypeB = E_ElementType.Throttle AND NOT processedElements[iB] THEN
+        _CalculateFlow_Throttle(iThrottle := iB);
+        processedElements[iB] := TRUE;
+    ELSIF eTypeA = E_ElementType.CheckValve AND NOT processedElements[iA] THEN
+        _CalculateFlow_CheckValve(iCheckValve := iA);
+        processedElements[iA] := TRUE;
+    ELSIF eTypeB = E_ElementType.CheckValve AND NOT processedElements[iB] THEN
+        _CalculateFlow_CheckValve(iCheckValve := iB);
+        processedElements[iB] := TRUE;
+    ELSIF eTypeA = E_ElementType.Regulator AND NOT processedElements[iA] THEN
+        _CalculateFlow_Regulator(iRegulator := iA);
+        processedElements[iA] := TRUE;
+    ELSIF eTypeB = E_ElementType.Regulator AND NOT processedElements[iB] THEN
+        _CalculateFlow_Regulator(iRegulator := iB);
+        processedElements[iB] := TRUE;
     ELSE
         // Standard flow calculation between two non-valve elements
-        _CalculateFlow_Generic(iElement1 := iA, iElement2 := iB);
+        _CalculateFlow_Generic(iConnection := i, iElement1 := iA, iElement2 := iB);
     END_IF;
 END_FOR;
 
@@ -120,8 +144,8 @@ FOR i := 1 TO GVL.MAX_ELEMENTS DO
             _UpdatePressure_EPU(iElement := i);
         E_ElementType.Supply:
             // Pressure is constant, do nothing.
-        E_ElementType.Valve:
-            // A valve has no pressure of its own.
+        E_ElementType.Valve, E_ElementType.Throttle, E_ElementType.CheckValve, E_ElementType.Regulator:
+            // These elements have no pressure of their own.
     END_CASE;
 END_FOR;
 
@@ -190,12 +214,14 @@ _arElementStates[iElement].fPressureVelocity := newVelocity;
 
 METHOD PRIVATE _CalculateFlow_Generic : BOOL
 VAR_INPUT
+    iConnection : UINT;
     iElement1 : UINT;
     iElement2 : UINT;
 END_VAR
 VAR
-    p1, p2, pMean, q, qCharge, dQ : LREAL;
+    p1, p2, pMean, rawFlow, smoothedFlow, qCharge, dQ : LREAL;
     area : LREAL;
+    alpha : LREAL;
 END_VAR
 
 p1 := _arElementStates[iElement1].fPressure_bar;
@@ -204,9 +230,15 @@ p2 := _arElementStates[iElement2].fPressure_bar;
 // Use the smaller of the two connection areas
 area := MIN(arElementConfigs[iElement1].fConnectionArea, arElementConfigs[iElement2].fConnectionArea);
 
-q := _ComputeVolumeFlow(pUp := p1, pDown := p2, area := area);
+rawFlow := _ComputeVolumeFlow(pUp := p1, pDown := p2, area := area);
+
+// Smoothed flow calculation
+alpha := 1.0 - EXP(-fDeltaT / GVL_Physics.fSmoothingTimeConstant);
+smoothedFlow := alpha * rawFlow + (1.0 - alpha) * _arElementStates[iElement1].fLastFlow;
+_arElementStates[iElement1].fLastFlow := smoothedFlow;
+
 pMean := 0.5 * (p1 + p2);
-qCharge := q * pMean;
+qCharge := smoothedFlow * pMean;
 dQ := qCharge * fDeltaT;
 
 // Element 1 loses charge, Element 2 gains charge
@@ -218,34 +250,15 @@ VAR_INPUT
     iValve : UINT;
 END_VAR
 VAR
-    i   : UINT;
     iA, iB : UINT;
-    neighbors : ARRAY[1..2] OF UINT;
-    neighbor_count : UINT := 0;
     openingFactor : LREAL;
-    pA, pB, pMean, q, qCharge, dQ, area : LREAL;
+    pA, pB, pMean, rawFlow, smoothedFlow, qCharge, dQ, area : LREAL;
+    alpha : LREAL;
 END_VAR
 
-// Find the two neighbors of the valve
-FOR i := 1 TO GVL.MAX_CONNECTIONS DO
-    IF arConnections[i].iElementA = iValve THEN
-        neighbor_count := neighbor_count + 1;
-        neighbors[neighbor_count] := arConnections[i].iElementB;
-    ELSIF arConnections[i].iElementB = iValve THEN
-        neighbor_count := neighbor_count + 1;
-        neighbors[neighbor_count] := arConnections[i].iElementA;
-    END_IF;
-    IF neighbor_count = 2 THEN
-        EXIT;
-    END_IF;
-END_FOR;
-
-IF neighbor_count <> 2 THEN
+IF NOT _FindNeighbors(iElement := iValve, iNeighborA => iA, iNeighborB => iB) THEN
     RETURN; // Valve is not connected correctly
 END_IF;
-
-iA := neighbors[1];
-iB := neighbors[2];
 
 openingFactor := arControlInputs[iValve];
 IF openingFactor < 0.0 THEN openingFactor := 0.0; END_IF;
@@ -256,12 +269,87 @@ pB := _arElementStates[iB].fPressure_bar;
 
 area := arElementConfigs[iValve].fConnectionArea * openingFactor;
 
-q := _ComputeVolumeFlow(pUp := pA, pDown := pB, area := area);
+rawFlow := _ComputeVolumeFlow(pUp := pA, pDown := pB, area := area);
+
+// Smoothed flow calculation
+alpha := 1.0 - EXP(-fDeltaT / GVL_Physics.fSmoothingTimeConstant);
+smoothedFlow := alpha * rawFlow + (1.0 - alpha) * _arElementStates[iValve].fLastFlow;
+_arElementStates[iValve].fLastFlow := smoothedFlow;
+
 pMean := 0.5 * (pA + pB);
-qCharge := q * pMean;
+qCharge := smoothedFlow * pMean;
 dQ := qCharge * fDeltaT;
 
 // Element A loses charge, Element B gains charge
+_arChargeDeltas[iA] := _arChargeDeltas[iA] - dQ;
+_arChargeDeltas[iB] := _arChargeDeltas[iB] + dQ;
+
+METHOD PRIVATE _FindNeighbors : BOOL
+VAR_INPUT
+    iElement : UINT;
+END_VAR
+VAR_OUTPUT
+    iNeighborA : UINT;
+    iNeighborB : UINT;
+END_VAR
+VAR
+    i   : UINT;
+    neighbors : ARRAY[1..2] OF UINT;
+    neighbor_count : UINT := 0;
+END_VAR
+
+// Find the two neighbors of the element
+FOR i := 1 TO GVL.MAX_CONNECTIONS DO
+    IF arConnections[i].iElementA = iElement THEN
+        neighbor_count := neighbor_count + 1;
+        neighbors[neighbor_count] := arConnections[i].iElementB;
+    ELSIF arConnections[i].iElementB = iElement THEN
+        neighbor_count := neighbor_count + 1;
+        neighbors[neighbor_count] := arConnections[i].iElementA;
+    END_IF;
+    IF neighbor_count = 2 THEN
+        EXIT;
+    END_IF;
+END_FOR;
+
+IF neighbor_count = 2 THEN
+    iNeighborA := neighbors[1];
+    iNeighborB := neighbors[2];
+    _FindNeighbors := TRUE;
+ELSE
+    _FindNeighbors := FALSE;
+END_IF;
+
+METHOD PRIVATE _CalculateFlow_Throttle : BOOL
+VAR_INPUT
+    iThrottle : UINT;
+END_VAR
+VAR
+    iA, iB : UINT;
+    pA, pB, pMean, rawFlow, smoothedFlow, qCharge, dQ, area : LREAL;
+    alpha : LREAL;
+END_VAR
+
+IF NOT _FindNeighbors(iElement := iThrottle, iNeighborA => iA, iNeighborB => iB) THEN
+    RETURN; // Throttle is not connected correctly
+END_IF;
+
+pA := _arElementStates[iA].fPressure_bar;
+pB := _arElementStates[iB].fPressure_bar;
+
+area := arElementConfigs[iThrottle].fConnectionArea; // Throttles are always 100% open
+
+rawFlow := _ComputeVolumeFlow(pUp := pA, pDown := pB, area := area);
+
+// Smoothed flow calculation
+alpha := 1.0 - EXP(-fDeltaT / GVL_Physics.fSmoothingTimeConstant);
+smoothedFlow := alpha * rawFlow + (1.0 - alpha) * _arElementStates[iThrottle].fLastFlow;
+_arElementStates[iThrottle].fLastFlow := smoothedFlow;
+
+pMean := 0.5 * (pA + pB);
+qCharge := smoothedFlow * pMean;
+dQ := qCharge * fDeltaT;
+
 _arChargeDeltas[iA] := _arChargeDeltas[iA] - dQ;
 _arChargeDeltas[iB] := _arChargeDeltas[iB] + dQ;
 
@@ -271,13 +359,16 @@ VAR_INPUT
     pUp     : LREAL;
     pDown   : LREAL;
     area    : LREAL;
+    flowCoefficient : LREAL := 1.0;
 END_VAR
 VAR
-    dp      : LREAL;
-    sign    : LREAL;
-    absDp   : LREAL;
-    q       : LREAL;
-    kLinear : LREAL;
+    dp              : LREAL;
+    sign            : LREAL;
+    absDpBar        : LREAL;
+    dpPascal        : LREAL;
+    velocity        : LREAL;
+    q               : LREAL;
+    BarToPascal     : LREAL := 100000.0;
 END_VAR
 
 dp := pUp - pDown;
@@ -290,14 +381,130 @@ IF dp < 0 THEN
     sign := -1.0;
 END_IF;
 
-absDp := ABS(dp);
+absDpBar := ABS(dp);
+dpPascal := absDpBar * BarToPascal;
 
-kLinear := _kNonlinear / SQRT(_deltaPCritical);
+// Bernoulli Equation: v = Sqrt(2 * DeltaP / Rho)
+velocity := SQRT((2.0 * dpPascal) / GVL_Physics.fRho);
 
-IF absDp < _deltaPCritical THEN
-    q := kLinear * area * absDp;
-ELSE
-    q := _kNonlinear * area * SQRT(absDp);
+// Choked flow check
+IF velocity > 340.0 THEN
+    velocity := 340.0;
 END_IF;
 
+// Q = Area * Velocity * FlowCoefficient
+q := area * velocity * flowCoefficient;
+
 RETURN sign * q;
+
+
+METHOD PRIVATE _CalculateFlow_Regulator : BOOL
+VAR_INPUT
+    iRegulator : UINT;
+END_VAR
+VAR
+    i, iUpstream, iDownstream : UINT;
+    pUpstream, pDownstream, pMean, rawFlow, smoothedFlow, qCharge, dQ, area, targetPressure, kp, ki, error, integralError, controlOutput, openingFactor : LREAL;
+    alpha : LREAL;
+    foundUpstream : BOOL;
+    foundDownstream : BOOL;
+END_VAR
+
+// Find the upstream and downstream neighbors
+FOR i := 1 TO GVL.MAX_CONNECTIONS DO
+    IF arConnections[i].iElementB = iRegulator AND arConnections[i].bIsDirectional THEN
+        iUpstream := arConnections[i].iElementA;
+        foundUpstream := TRUE;
+    ELSIF arConnections[i].iElementA = iRegulator AND arConnections[i].bIsDirectional THEN
+        iDownstream := arConnections[i].iElementB;
+        foundDownstream := TRUE;
+    END_IF;
+END_FOR;
+
+IF NOT foundUpstream OR NOT foundDownstream THEN
+    RETURN; // Regulator is not connected correctly
+END_IF;
+
+pUpstream := _arElementStates[iUpstream].fPressure_bar;
+pDownstream := _arElementStates[iDownstream].fPressure_bar;
+
+// PI controller for opening factor
+targetPressure := arElementConfigs[iRegulator].stRegulatorParams.fTargetPressure;
+kp := arElementConfigs[iRegulator].stRegulatorParams.fKp;
+ki := arElementConfigs[iRegulator].stRegulatorParams.fKi;
+error := targetPressure - pDownstream;
+integralError := _arElementStates[iRegulator].fIntegralError + error * fDeltaT;
+// Anti-windup
+IF integralError > 1.0 THEN integralError := 1.0; END_IF;
+IF integralError < -1.0 THEN integralError := -1.0; END_IF;
+_arElementStates[iRegulator].fIntegralError := integralError;
+controlOutput := (kp * error) + (ki * integralError);
+openingFactor := SEL(controlOutput < 0.0, controlOutput, 0.0);
+openingFactor := SEL(openingFactor > 1.0, 1.0, openingFactor);
+
+area := arElementConfigs[iRegulator].fConnectionArea * openingFactor;
+
+// Flow is unidirectional from Upstream to Downstream
+rawFlow := _ComputeVolumeFlow(pUp := pUpstream, pDown := pDownstream, area := area);
+rawFlow := SEL(rawFlow < 0.0, 0.0, rawFlow); // No reverse flow
+
+// Smoothed flow calculation
+alpha := 1.0 - EXP(-fDeltaT / GVL_Physics.fSmoothingTimeConstant);
+smoothedFlow := alpha * rawFlow + (1.0 - alpha) * _arElementStates[iRegulator].fLastFlow;
+_arElementStates[iRegulator].fLastFlow := smoothedFlow;
+
+pMean := 0.5 * (pUpstream + pDownstream);
+qCharge := smoothedFlow * pMean;
+dQ := qCharge * fDeltaT;
+
+_arChargeDeltas[iUpstream] := _arChargeDeltas[iUpstream] - dQ;
+_arChargeDeltas[iDownstream] := _arChargeDeltas[iDownstream] + dQ;
+
+
+METHOD PRIVATE _CalculateFlow_CheckValve : BOOL
+VAR_INPUT
+    iCheckValve : UINT;
+END_VAR
+VAR
+    i, iUpstream, iDownstream : UINT;
+    pUpstream, pDownstream, pMean, rawFlow, smoothedFlow, qCharge, dQ, area : LREAL;
+    alpha : LREAL;
+    foundUpstream : BOOL;
+    foundDownstream : BOOL;
+END_VAR
+
+// Find the upstream and downstream neighbors
+FOR i := 1 TO GVL.MAX_CONNECTIONS DO
+    IF arConnections[i].iElementB = iCheckValve AND arConnections[i].bIsDirectional THEN
+        iUpstream := arConnections[i].iElementA;
+        foundUpstream := TRUE;
+    ELSIF arConnections[i].iElementA = iCheckValve AND arConnections[i].bIsDirectional THEN
+        iDownstream := arConnections[i].iElementB;
+        foundDownstream := TRUE;
+    END_IF;
+END_FOR;
+
+IF NOT foundUpstream OR NOT foundDownstream THEN
+    RETURN; // Check valve is not connected correctly
+END_IF;
+
+pUpstream := _arElementStates[iUpstream].fPressure_bar;
+pDownstream := _arElementStates[iDownstream].fPressure_bar;
+
+area := arElementConfigs[iCheckValve].fConnectionArea;
+
+// Flow is unidirectional from Upstream to Downstream
+rawFlow := _ComputeVolumeFlow(pUp := pUpstream, pDown := pDownstream, area := area);
+rawFlow := SEL(rawFlow < 0.0, 0.0, rawFlow); // No reverse flow
+
+// Smoothed flow calculation
+alpha := 1.0 - EXP(-fDeltaT / GVL_Physics.fSmoothingTimeConstant);
+smoothedFlow := alpha * rawFlow + (1.0 - alpha) * _arElementStates[iCheckValve].fLastFlow;
+_arElementStates[iCheckValve].fLastFlow := smoothedFlow;
+
+pMean := 0.5 * (pUpstream + pDownstream);
+qCharge := smoothedFlow * pMean;
+dQ := qCharge * fDeltaT;
+
+_arChargeDeltas[iUpstream] := _arChargeDeltas[iUpstream] - dQ;
+_arChargeDeltas[iDownstream] := _arChargeDeltas[iDownstream] + dQ;

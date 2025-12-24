@@ -11,6 +11,7 @@ TYPE E_ElementType :
     Supply              := 40,  // Includes Exhaust (Pressure = 0)
     EPU                 := 50,
     CheckValve          := 60,
-    Throttle            := 70
+    Throttle            := 70,
+    Regulator           := 80
 );
 END_TYPE

@@ -106,6 +106,40 @@ namespace PLCGen
                         sb.AppendLine($"{baseElementPath}.fConnectionArea := {valveArea:E6}; // {valveDiameter*100}cm diameter");
                         break;
 
+                    case "throttle":
+                        sb.AppendLine($"{baseElementPath}.eType := E_ElementType.Throttle;");
+                        double throttleDiameter = ParameterHelper.GetDiameter(element);
+                        double throttleArea = Math.PI / 4 * throttleDiameter * throttleDiameter;
+                        sb.AppendLine($"{baseElementPath}.fConnectionArea := {throttleArea:E6}; // {throttleDiameter*100}cm diameter");
+                        break;
+
+                    case "checkvalve":
+                        sb.AppendLine($"{baseElementPath}.eType := E_ElementType.CheckValve;");
+                        double checkValveDiameter = ParameterHelper.GetDiameter(element);
+                        double checkValveArea = Math.PI / 4 * checkValveDiameter * checkValveDiameter;
+                        sb.AppendLine($"{baseElementPath}.fConnectionArea := {checkValveArea:E6}; // {checkValveDiameter*100}cm diameter");
+                        break;
+
+                    case "regulator":
+                        sb.AppendLine($"{baseElementPath}.eType := E_ElementType.Regulator;");
+                        double regulatorPortDiameter = ParameterHelper.GetDiameter(element, "portDiameter");
+                        if (regulatorPortDiameter == 0) regulatorPortDiameter = ParameterHelper.GetDiameter(element, "diameter");
+                        if (regulatorPortDiameter == 0) {
+                            regulatorPortDiameter = 0.02; // 2cm default
+                            Console.WriteLine($"Warning: Regulator '{element.Name}' has no 'portDiameter' or 'diameter' specified. Defaulting to 2cm.");
+                        }
+                        double regulatorArea = Math.PI / 4 * regulatorPortDiameter * regulatorPortDiameter;
+                        sb.AppendLine($"{baseElementPath}.fConnectionArea := {regulatorArea:E6}; // {regulatorPortDiameter*100}cm diameter");
+
+                        double targetPressure = ParameterHelper.GetDouble(element, "pressure", 0.0);
+                        double kp = ParameterHelper.GetDouble(element, "kp", 0.5);
+                        double ki = ParameterHelper.GetDouble(element, "ki", 5.0);
+
+                        sb.AppendLine($"{baseElementPath}.stRegulatorParams.fTargetPressure := {targetPressure:F2};");
+                        sb.AppendLine($"{baseElementPath}.stRegulatorParams.fKp := {kp:F2};");
+                        sb.AppendLine($"{baseElementPath}.stRegulatorParams.fKi := {ki:F2};");
+                        break;
+
                     case "tank":
                         sb.AppendLine($"{baseElementPath}.eType := E_ElementType.Tank;");
                         double tankVolume = ParameterHelper.GetVolume(element);
@@ -152,12 +186,14 @@ namespace PLCGen
             int connectionIndex = 1;
             foreach (var connectionStr in dto.Connections)
             {
-                 var names = connectionStr.Split(',').Select(n => n.Trim()).ToArray();
+                 var names = connectionStr.Split(new[] { ',', '>' }, StringSplitOptions.RemoveEmptyEntries).Select(n => n.Trim()).ToArray();
                  if (names.Length == 2)
                  {
                     if (nameToIndexMap.TryGetValue(names[0], out int indexA) && nameToIndexMap.TryGetValue(names[1], out int indexB))
                     {
-                        sb.AppendLine($"g_arConnections[{connectionIndex}].iElementA := {indexA}; g_arConnections[{connectionIndex}].iElementB := {indexB}; // {names[0]}, {names[1]}");
+                        bool isDirectional = connectionStr.Contains('>');
+                        string comment = isDirectional ? $"{names[0]} > {names[1]}" : $"{names[0]}, {names[1]}";
+                        sb.AppendLine($"g_arConnections[{connectionIndex}].iElementA := {indexA}; g_arConnections[{connectionIndex}].iElementB := {indexB}; g_arConnections[{connectionIndex}].bIsDirectional := {isDirectional.ToString().ToUpper()}; // {comment}");
                         connectionIndex++;
                     }
                  }
