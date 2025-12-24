@@ -18,6 +18,7 @@ STRUCT
         stPipeParams        : ST_Pipe_Params;
         stValveParams       : ST_Valve_Params;
         stEpuParams         : ST_Epu_Params;
+        stRegulatorParams   : ST_Regulator_Params;
     END_UNION
 END_STRUCT
 END_TYPE

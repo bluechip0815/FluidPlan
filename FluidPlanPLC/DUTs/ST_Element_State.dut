@@ -13,5 +13,11 @@ STRUCT
 
     // State for EPUs (PT2 Model)
     fPressureVelocity   : LREAL;
+
+    // State for Regulator (PI Controller)
+    fIntegralError      : LREAL;
+
+    // State for Flow Smoothing
+    fLastFlow           : LREAL; // [m³/s]
 END_STRUCT
 END_TYPE

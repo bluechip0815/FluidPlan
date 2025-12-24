@@ -7,5 +7,6 @@ TYPE ST_Connection :
 STRUCT
     iElementA           : UINT;
     iElementB           : UINT;
+    bIsDirectional      : BOOL; // TRUE if flow is restricted from A to B
 END_STRUCT
 END_TYPE
