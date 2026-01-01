@@ -1,0 +1,11 @@
+(*====================================================================
+    STRUCT: Pressure Regulator Parameters
+    Description: Contains specific parameters for a pressure regulator.
+====================================================================*)
+TYPE ST_Regulator_Params :
+STRUCT
+    fTargetPressure : LREAL;
+    fKp             : LREAL := 0.5;
+    fKi             : LREAL := 5.0;
+END_STRUCT
+END_TYPE

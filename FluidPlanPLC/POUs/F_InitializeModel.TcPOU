@@ -1,76 +1,115 @@
 (*====================================================================
     FUNCTION F_InitializeModel
     Description: Manually populates the global model configuration arrays.
-                 This is a direct translation of the model.json file.
+                 Matches the topology defined in model.json.
 ====================================================================*)
 FUNCTION F_InitializeModel : BOOL
 VAR
+    // No local variables needed for static initialization
 END_VAR
 
-// Clear arrays first
-MEMSET(ADR(g_arElementConfigs), 0, SIZEOF(g_arElementConfigs));
-MEMSET(ADR(g_arConnections), 0, SIZEOF(g_arConnections));
+// 1. Clear arrays to ensure a clean state
+MEMSET(ADR(GVL.g_arElementConfigs), 0, SIZEOF(GVL.g_arElementConfigs));
+MEMSET(ADR(GVL.g_arConnections), 0, SIZEOF(GVL.g_arConnections));
 
-// --- DEFINE ELEMENTS from model.json ---
+// --------------------------------------------------------
+// DEFINE ELEMENTS 
+// --------------------------------------------------------
 
-// Element 1: Supply
-g_arElementConfigs[1].eType := E_ElementType.Supply;
-g_arElementConfigs[1].sName := 'Supply';
-g_arElementConfigs[1].fInitialPressure := 6.0;
+// Element 1: Supply (Pressure Source)
+GVL.g_arElementConfigs[1].eType := E_ElementType.Supply;
+GVL.g_arElementConfigs[1].sName := 'Supply';
+GVL.g_arElementConfigs[1].fInitialPressure := 6.0; // 6 Bar
+GVL.g_arElementConfigs[1].fVolume := 0.0; // Infinite volume (Source)
 
-// Element 2: EPU
-g_arElementConfigs[2].eType := E_ElementType.EPU;
-g_arElementConfigs[2].sName := 'EPU';
-g_arElementConfigs[2].fConnectionArea := 3.14159E-4; // 2cm diameter
-g_arElementConfigs[2].stEpuParams.fTimeConstant := 1.1;
-g_arElementConfigs[2].stEpuParams.fMaxDpDt := 35.0;
-g_arElementConfigs[2].stEpuParams.fNaturalFrequency := 20.0; // Default
-g_arElementConfigs[2].stEpuParams.fDampingRatio := 0.7; // Default
+// Element 2: EPU (Electronic Pressure Unit - Active Element)
+GVL.g_arElementConfigs[2].eType := E_ElementType.EPU;
+GVL.g_arElementConfigs[2].sName := 'EPU';
+GVL.g_arElementConfigs[2].fConnectionArea := 3.14159E-4; // 20mm dia
+GVL.g_arElementConfigs[2].stEpuParams.fTimeConstant := 0.1;
+GVL.g_arElementConfigs[2].stEpuParams.fMaxDpDt := 35.0;
+GVL.g_arElementConfigs[2].stEpuParams.fNaturalFrequency := 20.0;
+GVL.g_arElementConfigs[2].stEpuParams.fDampingRatio := 0.7;
 
 // Element 3: R1 (Pipe)
-g_arElementConfigs[3].eType := E_ElementType.Pipe;
-g_arElementConfigs[3].sName := 'R1';
-g_arElementConfigs[3].fVolume := 3.14159E-5; // 10cm length, 2cm diameter
-g_arElementConfigs[3].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[3].eType := E_ElementType.Pipe;
+GVL.g_arElementConfigs[3].sName := 'R1';
+GVL.g_arElementConfigs[3].fVolume := 3.14159E-5; // 10cm * 2cm
+GVL.g_arElementConfigs[3].fConnectionArea := 3.14159E-4;
 
 // Element 4: R2 (Pipe)
-g_arElementConfigs[4].eType := E_ElementType.Pipe;
-g_arElementConfigs[4].sName := 'R2';
-g_arElementConfigs[4].fVolume := 3.14159E-5; // 10cm length, 2cm diameter
-g_arElementConfigs[4].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[4].eType := E_ElementType.Pipe;
+GVL.g_arElementConfigs[4].sName := 'R2';
+GVL.g_arElementConfigs[4].fVolume := 3.14159E-5;
+GVL.g_arElementConfigs[4].fConnectionArea := 3.14159E-4;
 
 // Element 5: R3 (Pipe)
-g_arElementConfigs[5].eType := E_ElementType.Pipe;
-g_arElementConfigs[5].sName := 'R3';
-g_arElementConfigs[5].fVolume := 3.14159E-5; // 10cm length, 2cm diameter
-g_arElementConfigs[5].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[5].eType := E_ElementType.Pipe;
+GVL.g_arElementConfigs[5].sName := 'R3';
+GVL.g_arElementConfigs[5].fVolume := 3.14159E-5;
+GVL.g_arElementConfigs[5].fConnectionArea := 3.14159E-4;
 
 // Element 6: V1 (Valve)
-g_arElementConfigs[6].eType := E_ElementType.Valve;
-g_arElementConfigs[6].sName := 'V1';
-g_arElementConfigs[6].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[6].eType := E_ElementType.Valve;
+GVL.g_arElementConfigs[6].sName := 'V1';
+GVL.g_arElementConfigs[6].fConnectionArea := 3.14159E-4;
+GVL.g_arElementConfigs[6].fVolume := 1.0E-6; // Minimal volume for calculation stability
+GVL.g_arElementConfigs[6].stValveParams.fOpenTime_s := 0.05;
 
 // Element 7: V2 (Valve)
-g_arElementConfigs[7].eType := E_ElementType.Valve;
-g_arElementConfigs[7].sName := 'V2';
-g_arElementConfigs[7].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[7].eType := E_ElementType.Valve;
+GVL.g_arElementConfigs[7].sName := 'V2';
+GVL.g_arElementConfigs[7].fConnectionArea := 3.14159E-4;
+GVL.g_arElementConfigs[7].fVolume := 1.0E-6;
+GVL.g_arElementConfigs[7].stValveParams.fOpenTime_s := 0.05;
 
 // Element 8: T1 (Tank)
-g_arElementConfigs[8].eType := E_ElementType.Tank;
-g_arElementConfigs[8].sName := 'T1';
-g_arElementConfigs[8].fVolume := 0.002; // 2l
-g_arElementConfigs[8].fConnectionArea := 3.14159E-4; // 2cm diameter
+GVL.g_arElementConfigs[8].eType := E_ElementType.Tank;
+GVL.g_arElementConfigs[8].sName := 'T1';
+GVL.g_arElementConfigs[8].fVolume := 0.002; // 2 Liters
+GVL.g_arElementConfigs[8].fConnectionArea := 3.14159E-4;
+GVL.g_arElementConfigs[8].fInitialPressure := 0.0; // Start empty/atmospheric
+
+// --------------------------------------------------------
+// DEFINE CONNECTIONS
+// --------------------------------------------------------
+// Mapping which element is connected to which.
+// Indices correspond to the g_arElementConfigs index defined above.
+
+// 1. Supply -> R1
+GVL.g_arConnections[1].iElementA := 1; 
+GVL.g_arConnections[1].iElementB := 3;
+
+// 2. R1 -> V1
+GVL.g_arConnections[2].iElementA := 3; 
+GVL.g_arConnections[2].iElementB := 6;
+
+// 3. V1 -> R2
+GVL.g_arConnections[3].iElementA := 6; 
+GVL.g_arConnections[3].iElementB := 4;
+
+// 4. R1 -> EPU
+GVL.g_arConnections[4].iElementA := 3; 
+GVL.g_arConnections[4].iElementB := 2;
+
+// 5. EPU -> R3
+GVL.g_arConnections[5].iElementA := 2; 
+GVL.g_arConnections[5].iElementB := 5;
+
+// 6. R3 -> V2
+GVL.g_arConnections[6].iElementA := 5; 
+GVL.g_arConnections[6].iElementB := 7;
+
+// 7. V2 -> R2
+GVL.g_arConnections[7].iElementA := 7; 
+GVL.g_arConnections[7].iElementB := 4;
+
+// 8. R2 -> T1 (Tank)
+GVL.g_arConnections[8].iElementA := 4; 
+GVL.g_arConnections[8].iElementB := 8;
 
 
-// --- DEFINE CONNECTIONS from model.json ---
-// Connections are defined by the indices of the elements in the g_arElementConfigs array.
-g_arConnections[1].iElementA := 1; g_arConnections[1].iElementB := 3; // Supply, R1
-g_arConnections[2].iElementA := 3; g_arConnections[2].iElementB := 6; // R1, V1
-g_arConnections[3].iElementA := 6; g_arConnections[3].iElementB := 4; // V1, R2
-g_arConnections[4].iElementA := 3; g_arConnections[4].iElementB := 2; // R1, EPU
-g_arConnections[5].iElementA := 2; g_arConnections[5].iElementB := 5; // EPU, R3
-g_arConnections[6].iElementA := 5; g_arConnections[6].iElementB := 7; // R3, V2
-g_arConnections[7].iElementA := 7; g_arConnections[7].iElementB := 4; // V2, R2
-g_arConnections[8].iElementA := 4; g_arConnections[8].iElementB := 8; // R2, T1
-
+// Return TRUE to indicate initialization is complete
 F_InitializeModel := TRUE;
+
+END_FUNCTION

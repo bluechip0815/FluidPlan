@@ -1,5 +1,6 @@
 TYPE ST_Pipe_Params :
 STRUCT
-    fLength : LREAL;
+    // Pipe specific params (could include roughness, etc.)
+    fLength : LREAL; 
 END_STRUCT
 END_TYPE

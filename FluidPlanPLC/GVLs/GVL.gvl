@@ -1,20 +1,18 @@
-(*====================================================================
-    GLOBAL VARIABLE LIST: GVL
-    Description: Defines system-wide constants and global data.
-====================================================================*)
-VAR_GLOBAL CONSTANT
-    MAX_ELEMENTS    : UINT := 20;
-    MAX_CONNECTIONS : UINT := 20;
-END_VAR
+{attribute 'qualified_only'}
 VAR_GLOBAL
-    // Static Model Definition (to be initialized)
-    g_arElementConfigs    : ARRAY[1..MAX_ELEMENTS] OF ST_Element_Config;
-    g_arConnections       : ARRAY[1..MAX_CONNECTIONS] OF ST_Connection;
+    // Maximum limits for the simulation arrays
+    MAX_ELEMENTS        : INT := 20;
+    MAX_CONNECTIONS     : INT := 20;
 
-    // Real-time I/O between PLC logic and Simulation FB
-    g_arControlInputs     : ARRAY[1..MAX_ELEMENTS] OF LREAL;
-    g_arMonitoredPressures: ARRAY[1..MAX_ELEMENTS] OF LREAL;
-
-    // Simulation Control
-    g_bSimExecuteStep     : BOOL;
+    // Simulation Physics Constants
+    c_RhoAir            : LREAL := 1.2;         // Density kg/m^3
+    c_BarToPascal       : LREAL := 100000.0;    // Conversion
+    c_SoundSpeed        : LREAL := 340.0;       // m/s
+    
+    // Global Simulation Data (Mapped in Main)
+    g_bSimExecuteStep      : BOOL := FALSE; 
+    g_arElementConfigs     : ARRAY[1..MAX_ELEMENTS] OF ST_Element_Config;
+    g_arConnections        : ARRAY[1..MAX_CONNECTIONS] OF ST_Connection;
+    g_arControlInputs      : ARRAY[1..MAX_ELEMENTS] OF LREAL; // Input for Valve(0-1) or EPU(bar)
+    g_arMonitoredPressures : ARRAY[1..MAX_ELEMENTS] OF LREAL; // Resulting Pressures
 END_VAR

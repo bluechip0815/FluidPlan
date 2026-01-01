@@ -5,7 +5,7 @@
 ====================================================================*)
 TYPE ST_Connection :
 STRUCT
-    iElementA           : UINT;
-    iElementB           : UINT;
+    iElementA : INT; // Index of first element
+    iElementB : INT; // Index of second element
 END_STRUCT
 END_TYPE

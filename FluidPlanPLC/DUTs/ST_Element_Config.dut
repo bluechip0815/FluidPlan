@@ -9,15 +9,15 @@ STRUCT
 
     // Physical Properties
     fInitialPressure    : LREAL; // [bar]
-    fVolume             : LREAL; // [m³] (For elements like Pipe/Tank)
-    fConnectionArea     : LREAL; // [m²] (Flow cross-section area)
+    fVolume             : LREAL; // [m^3]
+    fConnectionArea     : LREAL; // [m^2] Max flow area
+    fFlowCoefficient    : LREAL := 1.0; 
 
-    // Element-Specific Parameters
-    // Using a UNION allows us to save memory, as only one of these is active per element.
     UNION
         stPipeParams        : ST_Pipe_Params;
         stValveParams       : ST_Valve_Params;
         stEpuParams         : ST_Epu_Params;
+        stRegulatorParams   : ST_Regulator_Params;
     END_UNION
 END_STRUCT
 END_TYPE
