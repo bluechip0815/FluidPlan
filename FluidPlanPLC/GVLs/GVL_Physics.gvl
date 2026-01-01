@@ -1,8 +1,0 @@
-(*====================================================================
-    Global Variable List: Physics Parameters
-    Description: Holds configurable parameters for the physics simulation.
-====================================================================*)
-VAR_GLOBAL
-    fSmoothingTimeConstant  : LREAL := 0.0001; // [s]
-    fRho                    : LREAL := 1.2;     // [kg/m^3]
-END_VAR

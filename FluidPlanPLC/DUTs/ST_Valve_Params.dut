@@ -1,5 +1,6 @@
 TYPE ST_Valve_Params :
 STRUCT
-    fSwitchingTime_ms : LREAL;
+    fOpenTime_s     : LREAL := 0.05; // Time to open fully
+    fCloseTime_s    : LREAL := 0.05;
 END_STRUCT
 END_TYPE

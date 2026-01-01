@@ -4,8 +4,8 @@
 ====================================================================*)
 TYPE ST_Regulator_Params :
 STRUCT
-    fTargetPressure     : LREAL; // [bar]
-    fKp                 : LREAL; // Proportional gain
-    fKi                 : LREAL; // Integral gain
+    fTargetPressure : LREAL;
+    fKp             : LREAL := 0.5;
+    fKi             : LREAL := 5.0;
 END_STRUCT
 END_TYPE

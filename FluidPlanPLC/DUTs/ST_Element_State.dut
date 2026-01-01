@@ -4,20 +4,13 @@
 ====================================================================*)
 TYPE ST_Element_State :
 STRUCT
-    fPressure_bar       : LREAL;
-
-    // State for Valves
-    fCurrentOpeningFactor: LREAL; // 0.0 to 1.0
-    fCommandedState     : LREAL; // 0.0 or 1.0
-    fLastStateChangeTime: LREAL; // Simulation time of last command change
-
-    // State for EPUs (PT2 Model)
-    fPressureVelocity   : LREAL;
-
-    // State for Regulator (PI Controller)
-    fIntegralError      : LREAL;
-
-    // State for Flow Smoothing
-    fLastFlow           : LREAL; // [m³/s]
+    fPressure           : LREAL; // Current Pressure [bar]
+    fCurrentOpening     : LREAL; // 0.0 to 1.0 (For Valves)
+    
+    // For EPU / Regulation
+    fTargetPressure     : LREAL;
+    
+    // Internal accumulations for the step
+    fNetVolumeFlow      : LREAL; // [m^3/s]
 END_STRUCT
 END_TYPE

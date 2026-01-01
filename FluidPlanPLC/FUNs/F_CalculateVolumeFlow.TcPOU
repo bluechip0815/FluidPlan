@@ -1,0 +1,52 @@
+(*====================================================================
+    FUNCTION F_CalculateVolumeFlow
+    Description: Calculates flow Q based on pressure difference.
+                 Q = Area * Cd * Sqrt(2 * dP / Rho)
+                 Returns signed flow (+ from A to B).
+====================================================================*)
+FUNCTION F_CalculateVolumeFlow : LREAL
+VAR_INPUT
+    fPA : LREAL; // Pressure A [bar]
+    fPB : LREAL; // Pressure B [bar]
+    fArea : LREAL; // Connection Area [m^2]
+    fCd : LREAL; // Flow Coefficient
+END_VAR
+VAR
+    fDpBar : LREAL;
+    fDpPascal : LREAL;
+    fSign : LREAL;
+    fVelocity : LREAL;
+END_VAR
+
+// 1. Calculate Delta P
+fDpBar := fPA - fPB;
+
+// Check for negligible difference to avoid noise/division by zero
+IF ABS(fDpBar) < 1.0E-6 THEN
+    F_CalculateVolumeFlow := 0.0;
+    RETURN;
+END_IF;
+
+// Determine direction
+IF fDpBar >= 0 THEN
+    fSign := 1.0;
+ELSE
+    fSign := -1.0;
+END_IF;
+
+// 2. Convert to Pascal (Physics standard units)
+fDpPascal := ABS(fDpBar) * GVL.c_BarToPascal;
+
+// 3. Bernoulli Equation: v = Sqrt(2 * dP / Rho)
+// GVL.c_RhoAir = 1.2 kg/m^3
+fVelocity := SQRT( (2.0 * fDpPascal) / GVL.c_RhoAir );
+
+// Limit velocity to speed of sound (Choked Flow approximation)
+IF fVelocity > GVL.c_SoundSpeed THEN
+    fVelocity := GVL.c_SoundSpeed;
+END_IF;
+
+// 4. Calculate Q = Area * Velocity * Cd
+F_CalculateVolumeFlow := fSign * fArea * fVelocity * fCd;
+
+END_FUNCTION
