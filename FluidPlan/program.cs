@@ -7,6 +7,22 @@ namespace FluidSimu
     {
         public static void Main(string[] args)
         {
+            // Check for Generator Flag
+            if (args.Contains("--generate-plc"))
+            {
+                var modelFile = args.Length > 1 ? args[1] : "model.json";
+                var outputFile = args.Length > 2 ? args[2] : "F_InitializeModel.TcPOU";
+
+                try
+                {
+                    PlcCodeGenerator.Generate(modelFile, outputFile);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error generating PLC code: {ex.Message}");
+                }
+                return; // Exit after generation
+            }
             // Delegate to the correct mode based on command-line arguments
             if (args.Contains("--interactive"))
             {
@@ -25,8 +41,8 @@ namespace FluidSimu
             var logFileName = "simulation_result.csv";
 
             Console.WriteLine("Loading configuration...");
-            var modelDto = LoadJson<SimulationModelDto>(modelPath);
-            var profileDto = LoadJson<ExecutionProfileDto>(profilePath);
+            var modelDto = ModelLoader.LoadJson<SimulationModelDto>(modelPath);
+            var profileDto = ModelLoader.LoadJson<ExecutionProfileDto>(profilePath);
             FlowPhysics.Initialize(profileDto.PhysicsParameters);
 
             // 1. Create Model
@@ -88,17 +104,7 @@ namespace FluidSimu
                 Path.Combine(outputPath, FileNameSanitizer.Sanitize(modelDto.ModelName) + "_chart.png"),
                 modelDto);
         }
-        private static T LoadJson<T>(string path)
-        {
-            if (!File.Exists(path)) throw new FileNotFoundException(path);
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                ReadCommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true
-            }) ?? throw new InvalidOperationException($"Could not deserialize {path}");
-        }
+       
         /// <summary>
         /// NEW: Interactive simulation mode driven by console commands.
         /// </summary>
@@ -108,7 +114,7 @@ namespace FluidSimu
             Console.WriteLine("--- FluidSimu Interactive Mode ---");
             Console.WriteLine($"Loading model '{modelPath}'...");
 
-            var modelDto = LoadJson<SimulationModelDto>(modelPath);
+            var modelDto = ModelLoader.LoadJson<SimulationModelDto>(modelPath);
             var model = PneumaticModel.FromDto(modelDto);
             // Set the model to interactive mode
             model.IsInteractive = true;
